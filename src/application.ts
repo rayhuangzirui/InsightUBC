@@ -1,13 +1,12 @@
-// @ts-ignore
-
-import {readZip, unzipToDisk} from "./converter/jsonToSection";
+import {parseData, readZip, unzipToDisk} from "./converter/jsonToSection";
 import path from "path";
 import JSZip from "jszip";
 
 async function main() {
 	try {
-		const zipBuffer = await readZip(path.join(__dirname, "./resources/archives/pair.zip"));
-		await unzipToDisk(zipBuffer);
+/*		const zipBuffer = await readZip(path.join(__dirname, "./resources/archives/pair.zip"));
+		let parsedDataset = await unzipToDisk(zipBuffer);*/
+		await parseData("./resources/archives/pair.zip");
 		/*		const zip = new JSZip();
                 let zipData = await zip.loadAsync(zipBuffer);
                 for(let key in zipData.files){
