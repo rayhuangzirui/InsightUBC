@@ -20,7 +20,6 @@ export interface LOGICCOMPARISON {
 export enum LOGIC {
   AND,
   OR,
-  UNKNOWN
 }
 
 export interface MCOMPARISON {
@@ -36,11 +35,15 @@ export enum MCOMPARATOR {
 }
 
 export interface Key {
-  idstring: string, // handle validation in function
+	idstring: string,
+	field?: Mfield | Sfield
 }
 
 export interface Mkey extends Key{
-  mfield: Mfield,
+  field: Mfield,
+}
+export interface Skey extends Key {
+  field: Sfield,
 }
 
 export enum Mfield {
@@ -61,9 +64,6 @@ export enum IS {
   IS,
 }
 
-export interface Skey extends Key {
-  sfield: Sfield,
-}
 
 export enum Sfield {
   DEPT = "dept",

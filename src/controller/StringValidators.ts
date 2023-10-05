@@ -28,12 +28,12 @@ export function inputStringValidator(inputString: string): boolean {
 	return true;
 }
 
-export function isMkey(key: string): boolean {
+export function isMkey(key: any): boolean {
 	const mFields = Object.values(Mfield);
 	return mFields.some((field) => key.endsWith(`_${field}"`));
 }
 
-export function isSkey(key: string): boolean {
+export function isSkey(key: any): boolean {
 	const sFields = Object.values(Sfield);
 	return sFields.some((field) => key.endsWith(`_${field}"`));
 }

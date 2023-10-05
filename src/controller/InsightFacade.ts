@@ -9,6 +9,7 @@ import {
 import JSZip from "jszip";
 import fs from "fs";
 import path from "path";
+import QueryEngine from "./QueryEngine";
 
 /**
  * This is the main programmatic entry point for the project.
@@ -98,6 +99,8 @@ export default class InsightFacade implements IInsightFacade {
 
 
 	public performQuery(query: unknown): Promise<InsightResult[]> {
+		// initialize dataset, pass it into QueryEngine
+		// const queryEngine = new QueryEngine(dataset,query);
 		return Promise.reject("Not implemented.");
 	}
 
