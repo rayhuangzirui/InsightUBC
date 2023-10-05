@@ -8,7 +8,7 @@ import {
 } from "./IInsightFacade";
 import JSZip from "jszip";
 import path from "path";
-import * as fs from "fs";
+
 
 /**
  * This is the main programmatic entry point for the project.
@@ -164,6 +164,7 @@ export default class InsightFacade implements IInsightFacade {
 			return Promise.reject(new InsightError("failed to remove dataset"));
 		}
 	}
+
 
 	public async listDatasets(): Promise<InsightDataset[]> {
 		try {
