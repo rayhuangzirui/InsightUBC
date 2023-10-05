@@ -11,7 +11,7 @@ coverage/
 dist/
 
 # Persist Dir
-data/
+src/data/
 
 # Normal Things
 .DS_Store
