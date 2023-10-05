@@ -165,10 +165,6 @@ export default class InsightFacade implements IInsightFacade {
 		}
 	}
 
-	public performQuery(query: unknown): Promise<InsightResult[]> {
-		return Promise.reject("Not implemented.");
-	}
-
 	public async listDatasets(): Promise<InsightDataset[]> {
 		try {
 			return this._currentAddedDataset;
@@ -176,6 +172,11 @@ export default class InsightFacade implements IInsightFacade {
 			return Promise.reject(error);
 		}
 	}
+
+	public performQuery(query: unknown): Promise<InsightResult[]> {
+		return Promise.reject("Not implemented.");
+	}
+
 
 	public getCurrentAddedDataset(): InsightDataset[] {
 		return this._currentAddedDataset;
