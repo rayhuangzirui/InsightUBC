@@ -1,29 +1,25 @@
 import {
 	COLUMNS,
 	FILTER,
-	LOGIC,
+	Key,
 	LOGICCOMPARISON,
-	MCOMPARATOR,
 	MCOMPARISON,
 	ORDER,
-	Query, SCOMPARISON,
-	WHERE,
-	Key
+	Query,
+	SCOMPARISON,
 } from "./QueryInterfaces";
-import {parseKey, parseMKey, parseQuery} from "./QueryParser";
-import {isMkey} from "./StringValidators";
+import {MCOMPARATOR, LOGIC, Sfield, Mfield} from "./ClausesEnum";
+import {parseQuery} from "./QueryParser";
 
 export default class QueryEngine {
 	public dataset: any[];
 	public query: Query;
+
 	constructor(dataset: any[], inputQuery: any) {
 		this.dataset = dataset;
 		this.query = parseQuery(inputQuery);
 	}
 
-	public getWhere(): WHERE {
-		return this.query.body;
-	}
 	public getFilter(): FILTER {
 		return this.query.body.filter as FILTER;
 	}
@@ -32,167 +28,129 @@ export default class QueryEngine {
 		return this.query.options.columns;
 	}
 
-	public getOrder(): ORDER | null {
-		return this.query.options.order || null;
+	public getOrder(): ORDER | null{
+		return this.query.options.order as ORDER;
 	}
 
 	public runEngine(): any[] {
 		let results = this.filterData();
 		results = this.selectColumns(results);
-		// TODO: results = this.orderData(results);
+		results = this.sortDataInOrder(results);
 		return results;
 	}
 
 	private filterData(): any[] {
-		const filter = this.getFilter();
+		let filter = this.getFilter();
 
 		// If no filter, return all entries
 		if (!filter) {
 			return this.dataset;
 		}
 
-		let filtered = this.dataset.filter((entry) => this.performFilter(entry, filter));
-		return filtered;
+		return this.dataset.filter((entry) => this.filterHelper(entry, filter));
 	}
 
-	private performFilter(entry: any, filter: FILTER): boolean {
+	private filterHelper(entry: any, filter: FILTER): boolean {
 		if (filter.logicComp) {
-			return this.performLogicCom(entry, filter.logicComp);
+			return this.logicComHelper(entry, filter.logicComp);
 		} else if (filter.mComp) {
-			return this.performMCom(entry, filter.mComp);
+			return this.mComHelper(entry, filter.mComp);
 		} else if (filter.sComp) {
-			return this.performSCom(entry, filter.sComp);
+			return this.sComHelper(entry, filter.sComp);
 		} else if (filter.negation) {
-			return !this.performFilter(entry, filter.negation.filter);
+			return !this.filterHelper(entry, filter.negation.filter);
 		} else {
 			// No matched return true to the entry
 			return true;
 		}
 	}
 
-	private performLogicCom(entry: any, logicCom: LOGICCOMPARISON): boolean {
+	private logicComHelper(entry: any, logicCom: LOGICCOMPARISON): boolean {
 		if (logicCom.logic === LOGIC.AND) {
-			return logicCom.filter_list.every((innerFilter) => this.performFilter(entry, innerFilter));
+			return logicCom.filter_list.every((innerFilter) => this.filterHelper(entry, innerFilter));
 		} else if (logicCom.logic === LOGIC.OR) {
-			return logicCom.filter_list.some((innerFilter)=> this.performFilter(entry, innerFilter));
+			return logicCom.filter_list.some((innerFilter) => this.filterHelper(entry, innerFilter));
 		} else {
 			return true;
 		}
 	}
 
-	private performMCom(entry: any, mCom: MCOMPARISON): boolean {
-		const mfield = entry[mCom.mkey.field];
+	private mComHelper(entry: any, mCom: MCOMPARISON): boolean {
+		const mappedField = this.fieldMap[mCom.mkey.field];
+		const mfieldEntry = entry[mappedField];
 		switch (mCom.mcomparator) {
 			case MCOMPARATOR.LT:
-				return mfield < mCom.num;
+				return mfieldEntry < mCom.num;
 			case MCOMPARATOR.EQ:
-				return mfield === mCom.num;
+				return mfieldEntry === mCom.num;
 			case MCOMPARATOR.GT:
-				return mfield > mCom.num;
+				return mfieldEntry > mCom.num;
 			default:
 				return true;
 		}
 	}
 
-	private performSCom(entry: any, sCom: SCOMPARISON): boolean {
-		const sfield = entry[sCom.skey.field];
-		return sfield.includes(sCom.inputstring);
+	private sComHelper(entry: any, sCom: SCOMPARISON): boolean {
+		const mappedField = this.fieldMap[sCom.skey.field];
+		const sfieldEntry = entry[mappedField];
+
+		if (sCom.inputstring.startsWith("*") && sCom.inputstring.endsWith("*")) {
+			const string = sCom.inputstring.slice(1, -1);
+			return sfieldEntry.includes(string);
+		} else if (sCom.inputstring.startsWith("*")) {
+			return sfieldEntry.endsWith(sCom.inputstring.slice(1));
+		} else if (sCom.inputstring.endsWith("*")) {
+			return sfieldEntry.startsWith(sCom.inputstring.slice(0, -1));
+		}
+
+		return sfieldEntry === sCom.inputstring;
 	}
 
 	private selectColumns(dataset: any[]): any[] {
 		const columnKeys = this.getColumns().key_list;
 
-		return dataset.map((entry) => this.getProjectedEntry(entry, columnKeys));
+		return dataset.map((entry) => this.selectColumnsHelper(entry, columnKeys));
 	}
 
-	private getProjectedEntry(entry: any, keys: Key[]): any {
+	private selectColumnsHelper(entry: any, keys: Key[]): any {
 		let projectedEntry: any = {};
 		for (let key of keys) {
-			const comKey = `"${key.idstring}_${key.field}"`;
-			// projectedEntry[key] = entry[key];
+			let comKey = `"${key.idstring}_${key.field}"`;
+			projectedEntry[comKey] = entry[comKey];
 		}
+		return projectedEntry;
 	}
 
-	// public validateQuery(): boolean {
-	// 	if (!this.query) {
-	// 		return false;
-	// 	}
-	//
-	// 	if (!this.query.body || !this.query.options) {
-	// 		return false;
-	// 	}
-	//
-	// 	if (!this.validateWhere(this.query.body)) {
-	// 		return false;
-	// 	}
-	//
-	// 	if (!this.validateOptions(this.query.options)) {
-	// 		return false;
-	// 	}
-	//
-	// 	return true;
-	// }
-	//
-	// private validateWhere(body: WHERE): boolean {
-	// 	// when no filter in WHERE, valid for query all entries
-	// 	if (!body.filter) {
-	// 		return true;
-	// 	}
-	//
-	// 	const filter = body.filter;
-	// 	if (filter.logicComp) {
-	// 		if (!filter.logicComp || !filter.logicComp.logic ||
-	// 			!filter.logicComp.filter_list || filter.logicComp.filter_list.length === 0) {
-	// 			return false;
-	// 		}
-	// 		return true;
-	// 	} else if (filter.mComp) {
-	// 		if (!filter.mComp || !filter.mComp.mkey ||
-	// 			!filter.mComp.mcomparator || !filter.mComp.num) {
-	// 			return false;
-	// 		}
-	// 		return true;
-	// 	} else if (filter.sComp) {
-	// 		if (!filter.sComp || !filter.sComp.is || !filter.sComp.skey ||
-	// 			!inputStringValidator(filter.sComp.inputstring)) {
-	// 			return false;
-	// 		}
-	//
-	// 		return true;
-	// 	} else if (filter.negation) {
-	// 		if (!filter.negation || !filter.negation.NOT || !filter.negation.filter) {
-	// 			return false;
-	// 		}
-	//
-	// 		return true;
-	// 	} else {
-	// 		return false;
-	// 	}
-	// }
-	//
-	// private validateOptions(options: OPTIONS): boolean {
-	// 	if (!options.columns || options.columns.key_list.length === 0) {
-	// 		return false;
-	// 	}
-	//
-	// 	for (const key of options.columns.key_list) {
-	// 		if (!key) {
-	// 			return false;
-	// 		}
-	// 	}
-	//
-	// 	if (!options.order) {
-	// 		return false;
-	// 	}
-	//
-	// 	if (!this.validateOrder(options.order.key)) {
-	// 		return false;
-	// 	}
-	//
-	// 	return true;
-	// }
-	//
-	// private validateOrder(key: Key): boolean {
-	// 	return !!parseKey(key);
-	// }
+	private fieldMap: {[key in Mfield | Sfield]: string} = {
+		avg: "Avg",
+		pass: "Pass",
+		fail: "Fail",
+		audit: "Audit",
+		year: "Year",
+		dept: "Subject",
+		id: "Course",
+		instructor: "Professor",
+		title: "Title",
+		uuid: "id"
+	};
+	private sortDataInOrder(dataset: any[]): any[] {
+		const order = this.getOrder();
+
+		if (!order) {
+			return dataset;
+		}
+
+		const mappedField = this.fieldMap[order.key.field];
+
+		return dataset.sort((a, b) => {
+			if (typeof a[mappedField] === "string" && typeof b[mappedField] === "string") {
+				return a[mappedField].localeCompare(b[mappedField]);
+			} else if (typeof a[mappedField] === "number" && typeof b[mappedField] === "number") {
+				return a[mappedField] - b[mappedField];
+			}
+
+			return 0;
+		});
+
+	}
 }
