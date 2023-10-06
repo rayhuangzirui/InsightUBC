@@ -17,7 +17,7 @@ async function main() {
 	console.log(facade.getCurrentAddedDataset());*/
 	console.log(facade.getCurrentAddedDataset());
 	// console.log(facade.getCurrentAddedDataset());
-	let parsedChem121 = await facade.removeDataset("pair");
+	// let parsedChem121 = await facade.removeDataset("pair");
 	console.log(facade.getCurrentAddedDataset());
 }
 main();

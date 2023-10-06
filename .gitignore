@@ -1,17 +1,18 @@
-# See https://intellij-support.jetbrains.com/hc/en-us/articles/206544839-How-to-manage-projects-under-Version-Control-Systems
-**/.idea/workspace.xml
-**/.idea/usage.statistics.xml
-**/.idea/tasks.xml
-**/.idea/checkstyle-idea.xml
-**/.idea/shelf/
+# node_modules contain the code for the dependencies that your project relies on
+node_modules/*
 
-# Node
-node_modules/
-coverage/
-dist/
 
-# Persist Dir
-src/data/
+# IntelliJ environment files (not necessary if you aren't using IntelliJ)
+
+.idea/*
+
+# insightUBC project
+# Checkout Section 5.5 of C0 for more information
+
+data/*
+
+# Build files
+dist/*
 
 # Normal Things
 .DS_Store
