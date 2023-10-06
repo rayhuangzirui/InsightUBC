@@ -9,7 +9,10 @@ import {
 import JSZip from "jszip";
 import path from "path";
 import * as fs from "fs";
+import {Section} from "../model/Section";
 
+type DatasetId = string;
+type CourseName = string;
 
 /**
  * This is the main programmatic entry point for the project.
@@ -17,8 +20,11 @@ import * as fs from "fs";
  *
  */
 export default class InsightFacade implements IInsightFacade {
-	private _currentAddedDataset: InsightDataset[] = [];
+	private _currentAddedInsightDataset: InsightDataset[] = [];
 	private _currentAddedDatasetId: string[] = [];
+	// This map contains the real data for all added datasets
+	private _addedDatasets: Array<{[key: string]: Section[]}>;
+
 	constructor() {
 		console.log("InsightFacadeImpl::init()");
 	}
@@ -26,7 +32,7 @@ export default class InsightFacade implements IInsightFacade {
 		if (!this.isIdKindValid(id, kind)) {
 			return Promise.reject(new InsightError());
 		}
-		if (this._currentAddedDataset.some((dataset) => dataset.id === id)) {
+		if (this._currentAddedInsightDataset.some((dataset) => dataset.id === id)) {
 			return Promise.reject(new InsightError("Dataset already exists"));
 		}
 
@@ -64,6 +70,7 @@ export default class InsightFacade implements IInsightFacade {
 		}
 
 		let rowNumber = this.countRowNum(parsedData);
+		// todo: use code to create data directory
 		const pathToWrite = path.join(__dirname, "..", "data", id + ".json");
 		let stringfiedData = JSON.stringify(parsedData, null, 2);
 
@@ -71,8 +78,8 @@ export default class InsightFacade implements IInsightFacade {
 		let datasetToBeAdded: InsightDataset = {
 			id: id, kind: kind, numRows: rowNumber
 		};
-		this._currentAddedDataset.push(datasetToBeAdded);
-		return this._currentAddedDataset.map((dataset) => dataset.id);
+		this._currentAddedInsightDataset.push(datasetToBeAdded);
+		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
 	}
 
 	private isIdKindValid(id: string, kind: InsightDatasetKind): boolean {
@@ -151,12 +158,12 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(new InsightError());
 			}
 			// js/ts has garbage collection, so we don't need to manully free memory for the removed dataset
-			const datasetExists = this._currentAddedDataset.some((dataset) => dataset.id === id);
+			const datasetExists = this._currentAddedInsightDataset.some((dataset) => dataset.id === id);
 			if (!datasetExists) {
 				return Promise.reject(new NotFoundError("Dataset not found"));
 			}
 			// remove from memory cache
-			this._currentAddedDataset = this._currentAddedDataset.filter((dataset) => dataset.id !== id);
+			this._currentAddedInsightDataset = this._currentAddedInsightDataset.filter((dataset) => dataset.id !== id);
 			const pathToDelete = path.join(__dirname, "..", "data", id + ".json");
 			await fs.promises.unlink(pathToDelete);
 			return id;
@@ -169,10 +176,34 @@ export default class InsightFacade implements IInsightFacade {
 
 	public async listDatasets(): Promise<InsightDataset[]> {
 		try {
-			return this._currentAddedDataset;
+			return this._currentAddedInsightDataset;
 		} catch (error) {
 			return Promise.reject(error);
 		}
+	}
+
+	public async loadAddedDatasetFromDisk(): Promise<void> {
+		const content = await fs.promises.readdir(path.join(__dirname, "..", "data"));
+	}
+
+	// convert each section record within a dataset json file to a Section object
+/*	public jsonToSection(sectionRecordJson: any): Section {
+	}
+		const sectionObject = JSON.parse(sectionRecordJson, (key, value) => {
+			if (key === "Year") {
+
+		}
+		return new Section();
+
+	}*/
+// todo：handle when undefined parameter is passed in constructor
+	public jsonToSection(json: string): Section {
+		let parsedObject = JSON.parse(json);
+		console.log(parsedObject.Subject);
+		return new Section(parsedObject.Subject, parsedObject.Course,
+			parsedObject.Avg, parsedObject.Professor, parsedObject.Title,
+			parsedObject.Pass, parsedObject.Fail, parsedObject.Audit,
+			parsedObject.id, parsedObject.Year);
 	}
 
 	public performQuery(query: unknown): Promise<InsightResult[]> {
@@ -181,10 +212,10 @@ export default class InsightFacade implements IInsightFacade {
 
 
 	public getCurrentAddedDataset(): InsightDataset[] {
-		return this._currentAddedDataset;
+		return this._currentAddedInsightDataset;
 	}
 
 	public setCurrentAddedDataset(value: InsightDataset[]) {
-		this._currentAddedDataset = value;
+		this._currentAddedInsightDataset = value;
 	}
 }
