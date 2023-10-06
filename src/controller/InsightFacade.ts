@@ -8,6 +8,7 @@ import {
 } from "./IInsightFacade";
 import JSZip from "jszip";
 import path from "path";
+import * as fs from "fs";
 
 
 /**

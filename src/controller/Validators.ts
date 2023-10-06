@@ -1,4 +1,5 @@
-import {Mfield, Sfield} from "./QueryInterfaces";
+import {Key} from "./QueryInterfaces";
+import {Mfield, Sfield} from "./ClausesEnum";
 
 export function IDValidator (id: string): boolean {
 	if (id.includes("_")) {
@@ -36,4 +37,8 @@ export function isMkey(key: any): boolean {
 export function isSkey(key: any): boolean {
 	const sFields = Object.values(Sfield);
 	return sFields.some((field) => key.endsWith(`_${field}"`));
+}
+
+export function orderKeyValidator(key: Key, key_list: Key[]): boolean {
+	return key_list.includes(key);
 }
