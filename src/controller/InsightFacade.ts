@@ -173,7 +173,6 @@ export default class InsightFacade implements IInsightFacade {
 		}
 	}
 
-
 	public async listDatasets(): Promise<InsightDataset[]> {
 		try {
 			return this._currentAddedInsightDataset;
@@ -197,14 +196,44 @@ export default class InsightFacade implements IInsightFacade {
 
 	}*/
 // todo：handle when undefined parameter is passed in constructor
-	public jsonToSection(json: string): Section {
-		let parsedObject = JSON.parse(json);
-		console.log(parsedObject.Subject);
-		return new Section(parsedObject.Subject, parsedObject.Course,
-			parsedObject.Avg, parsedObject.Professor, parsedObject.Title,
-			parsedObject.Pass, parsedObject.Fail, parsedObject.Audit,
-			parsedObject.id, parsedObject.Year);
+	// load the dataset from disk, and convert it to a ts Section[] array
+	public jsonToSection(datasetId: string): Section[] {
+		// after readfilesync, it's a json string, need to parse it to json object
+		let datafileString = fs.readFileSync("./data/" + datasetId + ".json", "utf8");
+		// the data is of nested json format,after parse, it's a ts object array
+		// the array contains ts objects;  each object element contains a json string(the real data fields for a section)
+		let parsedObjectArray = JSON.parse(datafileString);
+		// return all the section data in the file as an Object[]
+		let sectionRawData = this.extractResultValues(parsedObjectArray);
+		// console.log(parsedObject.Subject);
+		let sectionArray: Section[] = [];
+		for (let section of sectionRawData) {
+			let testsection = new Section(section.Subject, section.Course,
+				section.Avg, section.Professor, section.Title,
+				section.Pass, section.Fail, section.Audit,
+				section.id, section.Year);
+			sectionArray.push(testsection);
+			// console.log(testsection);
+		}
+		// console.log(sectionArray);
+		return sectionArray;
 	}
+
+	public extractResultValues(data: any[]): any[] {
+		const results: any[] = [];
+
+		data.forEach((item) => {
+			for (const key in item) {
+				const innerObject = JSON.parse(item[key]);
+				if ("result" in innerObject) {
+					results.push(...innerObject.result);
+				}
+			}
+		});
+
+		return results;
+	}
+
 
 	public performQuery(query: unknown): Promise<InsightResult[]> {
 		return Promise.reject("Not implemented.");

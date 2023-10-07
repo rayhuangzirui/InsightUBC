@@ -12,6 +12,7 @@ export class Section {
 	private _fail: number;
 	// number of students who audited
 	private _audit: number;
+	// section id
 	private _uuid: string;
 	private _year: number;
 
