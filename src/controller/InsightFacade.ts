@@ -4,11 +4,15 @@ import {
 	InsightDatasetKind,
 	InsightError,
 	InsightResult,
-	NotFoundError
+	NotFoundError, ResultTooLargeError
 } from "./IInsightFacade";
 import JSZip from "jszip";
 import path from "path";
 import * as fs from "fs";
+import QueryEngine from "./QueryEngine";
+import {parseQuery} from "./QueryParser";
+import e from "express";
+import {getIDsFromQuery} from "./Validators";
 
 
 /**
@@ -19,6 +23,9 @@ import * as fs from "fs";
 export default class InsightFacade implements IInsightFacade {
 	private _currentAddedDataset: InsightDataset[] = [];
 	private _currentAddedDatasetId: string[] = [];
+	//
+	// datasetList:[] = {ID1: dataset[], ID2: dataset[]...}
+	private MAX_SIZE = 5000;
 	constructor() {
 		console.log("InsightFacadeImpl::init()");
 	}
@@ -59,6 +66,7 @@ export default class InsightFacade implements IInsightFacade {
 
 		try {
 			parsedData = await Promise.all(jobs);
+		  // eslint-disable-next-line @typescript-eslint/no-shadow
 		} catch (e) {
 			throw new InsightError("error parsing course data");
 		}
@@ -175,8 +183,40 @@ export default class InsightFacade implements IInsightFacade {
 		}
 	}
 
-	public performQuery(query: unknown): Promise<InsightResult[]> {
-		return Promise.reject("Not implemented.");
+	public async performQuery(query: unknown): Promise<InsightResult[]> {
+		try {
+			let parsedQuery = parseQuery(query);
+			let idFromQuery = getIDsFromQuery(parsedQuery);
+
+			if (idFromQuery.length > 1) {
+				return Promise.reject(new InsightError("Querying multiple datasets is rejected"));
+			} else if (idFromQuery.length === 0) {
+				return Promise.reject(new InsightError("No key found in the query"));
+			}
+
+			// let datasetList = this.datsetList;
+			let id = idFromQuery[0];
+
+			// if (!dataList.includes(id)) {
+			// 	return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
+			// }
+
+			// let dataset = dataList[id];
+			// let queryEngine = new QueryEngine(dataset, query);
+			// let result: InsightResult[] = queryEngine.runEngine();
+
+			// if (result.length > this.MAX_SIZE) {
+			// 	return Promise.reject(new ResultTooLargeError("The result is too big"));
+			// }
+			//
+			// return Promise.resolve(result);
+		  return Promise.reject("To be complete");
+		} catch (error) {
+			if (error instanceof InsightError) {
+				return Promise.reject(error);
+			}
+			return Promise.reject(new InsightError("Invalid query"));
+		}
 	}
 
 
