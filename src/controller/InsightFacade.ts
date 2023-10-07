@@ -9,11 +9,13 @@ import {
 import JSZip from "jszip";
 import path from "path";
 import * as fs from "fs";
+import {Section} from "../model/Section";
 import QueryEngine from "./QueryEngine";
 import {parseQuery} from "./QueryParser";
-import e from "express";
 import {getIDsFromQuery} from "./Validators";
 
+type DatasetId = string;
+type CourseName = string;
 
 /**
  * This is the main programmatic entry point for the project.
@@ -21,11 +23,15 @@ import {getIDsFromQuery} from "./Validators";
  *
  */
 export default class InsightFacade implements IInsightFacade {
-	private _currentAddedDataset: InsightDataset[] = [];
+	private _currentAddedInsightDataset: InsightDataset[] = [];
 	private _currentAddedDatasetId: string[] = [];
+	// This map contains the real data for all added datasets
+	private _addedDatasets: Array<{[key: string]: Section[]}>;
+
 	//
 	// datasetList:[] = {ID1: dataset[], ID2: dataset[]...}
 	private MAX_SIZE = 5000;
+	private _currentAddedDataset: InsightDataset[];
 	constructor() {
 		console.log("InsightFacadeImpl::init()");
 	}
@@ -33,7 +39,7 @@ export default class InsightFacade implements IInsightFacade {
 		if (!this.isIdKindValid(id, kind)) {
 			return Promise.reject(new InsightError());
 		}
-		if (this._currentAddedDataset.some((dataset) => dataset.id === id)) {
+		if (this._currentAddedInsightDataset.some((dataset) => dataset.id === id)) {
 			return Promise.reject(new InsightError("Dataset already exists"));
 		}
 
@@ -66,7 +72,6 @@ export default class InsightFacade implements IInsightFacade {
 
 		try {
 			parsedData = await Promise.all(jobs);
-		  // eslint-disable-next-line @typescript-eslint/no-shadow
 		} catch (e) {
 			throw new InsightError("error parsing course data");
 		}
@@ -159,12 +164,12 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(new InsightError());
 			}
 			// js/ts has garbage collection, so we don't need to manully free memory for the removed dataset
-			const datasetExists = this._currentAddedDataset.some((dataset) => dataset.id === id);
+			const datasetExists = this._currentAddedInsightDataset.some((dataset) => dataset.id === id);
 			if (!datasetExists) {
 				return Promise.reject(new NotFoundError("Dataset not found"));
 			}
 			// remove from memory cache
-			this._currentAddedDataset = this._currentAddedDataset.filter((dataset) => dataset.id !== id);
+			this._currentAddedInsightDataset = this._currentAddedInsightDataset.filter((dataset) => dataset.id !== id);
 			const pathToDelete = path.join(__dirname, "..", "data", id + ".json");
 			await fs.promises.unlink(pathToDelete);
 			return id;
@@ -174,13 +179,66 @@ export default class InsightFacade implements IInsightFacade {
 		}
 	}
 
-
 	public async listDatasets(): Promise<InsightDataset[]> {
 		try {
-			return this._currentAddedDataset;
+			return this._currentAddedInsightDataset;
 		} catch (error) {
 			return Promise.reject(error);
 		}
+	}
+
+
+	public async loadAddedDatasetFromDisk(): Promise<void> {
+		const content = await fs.promises.readdir(path.join(__dirname, "..", "data"));
+	}
+
+	// convert each section record within a dataset json file to a Section object
+/*	public jsonToSection(sectionRecordJson: any): Section {
+	}
+		const sectionObject = JSON.parse(sectionRecordJson, (key, value) => {
+			if (key === "Year") {
+
+		}
+		return new Section();
+
+	}*/
+// todo：handle when undefined parameter is passed in constructor
+	// load the dataset from disk, and convert it to a ts Section[] array
+	public jsonToSection(datasetId: string): Section[] {
+		// after readfilesync, it's a json string, need to parse it to json object
+		let datafileString = fs.readFileSync("./data/" + datasetId + ".json", "utf8");
+		// the data is of nested json format,after parse, it's a ts object array
+		// the array contains ts objects;  each object element contains a json string(the real data fields for a section)
+		let parsedObjectArray = JSON.parse(datafileString);
+		// return all the section data in the file as an Object[]
+		let sectionRawData = this.extractResultValues(parsedObjectArray);
+		// console.log(parsedObject.Subject);
+		let sectionArray: Section[] = [];
+		for (let section of sectionRawData) {
+			let testsection = new Section(section.Subject, section.Course,
+				section.Avg, section.Professor, section.Title,
+				section.Pass, section.Fail, section.Audit,
+				section.id, section.Year);
+			sectionArray.push(testsection);
+			// console.log(testsection);
+		}
+		// console.log(sectionArray);
+		return sectionArray;
+	}
+
+	public extractResultValues(data: any[]): any[] {
+		const results: any[] = [];
+
+		data.forEach((item) => {
+			for (const key in item) {
+				const innerObject = JSON.parse(item[key]);
+				if ("result" in innerObject) {
+					results.push(...innerObject.result);
+				}
+			}
+		});
+
+		return results;
 	}
 
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
@@ -194,23 +252,22 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(new InsightError("No key found in the query"));
 			}
 
-			// let datasetList = this.datsetList;
 			let id = idFromQuery[0];
 
-			// if (!dataList.includes(id)) {
-			// 	return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
-			// }
+			let dataList = this._addedDatasets;
+			if (!dataList.some((dataset) => Object.prototype.hasOwnProperty.call(dataset, id))) {
+				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
+			}
 
-			// let dataset = dataList[id];
-			// let queryEngine = new QueryEngine(dataset, query);
-			// let result: InsightResult[] = queryEngine.runEngine();
+			let dataset = this.jsonToSection(id);
+			let queryEngine = new QueryEngine(dataset, query);
+			let result: InsightResult[] = queryEngine.runEngine();
 
-			// if (result.length > this.MAX_SIZE) {
-			// 	return Promise.reject(new ResultTooLargeError("The result is too big"));
-			// }
-			//
-			// return Promise.resolve(result);
-		  return Promise.reject("To be complete");
+			if (result.length > this.MAX_SIZE) {
+				return Promise.reject(new ResultTooLargeError("The result is too big"));
+			}
+
+			return Promise.resolve(result);
 		} catch (error) {
 			if (error instanceof InsightError) {
 				return Promise.reject(error);
@@ -221,7 +278,7 @@ export default class InsightFacade implements IInsightFacade {
 
 
 	public getCurrentAddedDataset(): InsightDataset[] {
-		return this._currentAddedDataset;
+		return this._currentAddedInsightDataset;
 	}
 
 	public setCurrentAddedDataset(value: InsightDataset[]) {
