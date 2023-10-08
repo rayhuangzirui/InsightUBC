@@ -1,4 +1,4 @@
-import {Key} from "./QueryInterfaces";
+import {FILTER, Key} from "./QueryInterfaces";
 import {Mfield, Sfield} from "./ClausesEnum";
 
 export function IDValidator (id: string): boolean {
@@ -31,14 +31,49 @@ export function inputStringValidator(inputString: string): boolean {
 
 export function isMkey(key: any): boolean {
 	const mFields = Object.values(Mfield);
-	return mFields.some((field) => key.endsWith(`_${field}"`));
+	return mFields.some((field) => key.endsWith(`${field}`));
 }
 
 export function isSkey(key: any): boolean {
 	const sFields = Object.values(Sfield);
-	return sFields.some((field) => key.endsWith(`_${field}"`));
+	return sFields.some((field) => key.endsWith(`${field}`));
 }
 
 export function orderKeyValidator(key: Key, key_list: Key[]): boolean {
 	return key_list.includes(key);
 }
+
+export function getIDsFromQuery(query: any): string[] {
+	let ids = new Set<string>();
+
+	// get IDs from the WHERE clause
+	if (query.body && query.body.filter) {
+		getIDsFromFilter(query.body.filter, ids);
+	}
+
+	// get IDs from the OPTIONS clause
+	if (query.options && query.options.columns && query.options.columns.key_list) {
+		for (const key of query.options.columns.key_list) {
+			if (key.idstring) {
+				ids.add(key.idstring);
+			}
+		}
+	}
+
+	return [...ids];
+}
+
+function getIDsFromFilter(filter: FILTER, ids: Set<string>): void {
+	if (filter.logicComp) {
+		for (const innerFilter of filter.logicComp.filter_list) {
+			getIDsFromFilter(innerFilter, ids);
+		}
+	} else if (filter.mComp && filter.mComp.mkey) {
+		ids.add(filter.mComp.mkey.idstring);
+	} else if (filter.sComp && filter.sComp.skey) {
+		ids.add(filter.sComp.skey.idstring);
+	} else if (filter.negation) {
+		getIDsFromFilter(filter.negation.filter, ids);
+	}
+}
+

@@ -4,12 +4,15 @@ import {
 	InsightDatasetKind,
 	InsightError,
 	InsightResult,
-	NotFoundError
+	NotFoundError, ResultTooLargeError
 } from "./IInsightFacade";
 import JSZip from "jszip";
 import path from "path";
 import * as fs from "fs";
-
+import {Section} from "../model/Section";
+import QueryEngine from "./QueryEngine";
+import {parseQuery} from "./QueryParser";
+import {getIDsFromQuery} from "./Validators";
 
 /**
  * This is the main programmatic entry point for the project.
@@ -17,8 +20,12 @@ import * as fs from "fs";
  *
  */
 export default class InsightFacade implements IInsightFacade {
-	private _currentAddedDataset: InsightDataset[] = [];
-	private _currentAddedDatasetId: string[] = [];
+	private _currentAddedInsightDataset: InsightDataset[] = [];
+	// private _currentAddedDatasetId: string[] = [];
+	// This map contains the real data for all added datasets
+	// private _addedDatasets: Array<{[key: string]: Section[]}>;
+
+	private MAX_SIZE = 5000;
 	constructor() {
 		console.log("InsightFacadeImpl::init()");
 	}
@@ -26,7 +33,7 @@ export default class InsightFacade implements IInsightFacade {
 		if (!this.isIdKindValid(id, kind)) {
 			return Promise.reject(new InsightError());
 		}
-		if (this._currentAddedDataset.some((dataset) => dataset.id === id)) {
+		if (this._currentAddedInsightDataset.some((dataset) => dataset.id === id)) {
 			return Promise.reject(new InsightError("Dataset already exists"));
 		}
 
@@ -71,8 +78,8 @@ export default class InsightFacade implements IInsightFacade {
 		let datasetToBeAdded: InsightDataset = {
 			id: id, kind: kind, numRows: rowNumber
 		};
-		this._currentAddedDataset.push(datasetToBeAdded);
-		return this._currentAddedDataset.map((dataset) => dataset.id);
+		this._currentAddedInsightDataset.push(datasetToBeAdded);
+		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
 	}
 
 	private isIdKindValid(id: string, kind: InsightDatasetKind): boolean {
@@ -151,12 +158,12 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(new InsightError());
 			}
 			// js/ts has garbage collection, so we don't need to manully free memory for the removed dataset
-			const datasetExists = this._currentAddedDataset.some((dataset) => dataset.id === id);
+			const datasetExists = this._currentAddedInsightDataset.some((dataset) => dataset.id === id);
 			if (!datasetExists) {
 				return Promise.reject(new NotFoundError("Dataset not found"));
 			}
 			// remove from memory cache
-			this._currentAddedDataset = this._currentAddedDataset.filter((dataset) => dataset.id !== id);
+			this._currentAddedInsightDataset = this._currentAddedInsightDataset.filter((dataset) => dataset.id !== id);
 			const pathToDelete = path.join(__dirname, "..", "data", id + ".json");
 			await fs.promises.unlink(pathToDelete);
 			return id;
@@ -166,25 +173,118 @@ export default class InsightFacade implements IInsightFacade {
 		}
 	}
 
-
 	public async listDatasets(): Promise<InsightDataset[]> {
 		try {
-			return this._currentAddedDataset;
+			return this._currentAddedInsightDataset;
 		} catch (error) {
 			return Promise.reject(error);
 		}
 	}
 
-	public performQuery(query: unknown): Promise<InsightResult[]> {
-		return Promise.reject("Not implemented.");
+
+	public async loadAddedDatasetFromDisk(): Promise<void> {
+		const content = await fs.promises.readdir(path.join(__dirname, "..", "data"));
+	}
+
+	// convert each section record within a dataset json file to a Section object
+/*	public jsonToSection(sectionRecordJson: any): Section {
+	}
+		const sectionObject = JSON.parse(sectionRecordJson, (key, value) => {
+			if (key === "Year") {
+
+		}
+		return new Section();
+
+	}*/
+// todo：handle when undefined parameter is passed in constructor
+	// load the dataset from disk, and convert it to a ts Section[] array
+	public jsonToSection(datasetId: string): Section[] {
+		const dataFilePath = path.join(__dirname, "..", "data", datasetId + ".json");
+		// after readfilesync, it's a json string, need to parse it to json object
+		// let datafileString = fs.readFileSync("./data/" + datasetId + ".json", "utf8");
+		let datafileString = fs.readFileSync(dataFilePath, "utf8");
+		// the data is of nested json format,after parse, it's a ts object array
+		// the array contains ts objects;  each object element contains a json string(the real data fields for a section)
+		let parsedObjectArray = JSON.parse(datafileString);
+		// return all the section data in the file as an Object[]
+		let sectionRawData = this.extractResultValues(parsedObjectArray);
+		// console.log(parsedObject.Subject);
+		let sectionArray: Section[] = [];
+		for (let section of sectionRawData) {
+			let testsection = new Section(section.Subject, section.Course,
+				section.Avg, section.Professor, section.Title,
+				section.Pass, section.Fail, section.Audit,
+				section.id, section.Year);
+			sectionArray.push(testsection);
+			// console.log(testsection);
+		}
+		// console.log(sectionArray);
+		return sectionArray;
+	}
+
+	public extractResultValues(data: any[]): any[] {
+		const results: any[] = [];
+
+		data.forEach((item) => {
+			for (const key in item) {
+				const innerObject = JSON.parse(item[key]);
+				if ("result" in innerObject) {
+					results.push(...innerObject.result);
+				}
+			}
+		});
+
+		return results;
+	}
+
+	public async performQuery(query: unknown): Promise<InsightResult[]> {
+		try {
+			let parsedQuery = parseQuery(query);
+			let idFromQuery = getIDsFromQuery(parsedQuery);
+
+			if (idFromQuery.length > 1) {
+				// console.log("Querying multiple datasets is rejected");
+				return Promise.reject(new InsightError("Querying multiple datasets is rejected"));
+			} else if (idFromQuery.length === 0) {
+				// console.log("No key found in the query");
+				return Promise.reject(new InsightError("No key found in the query"));
+			}
+
+			let id = idFromQuery[0];
+
+			let dataList = this._currentAddedInsightDataset;
+			if (!dataList.some((dataset) => dataset.id === id)) {
+				// console.log("Dataset " + id + " does not exist");
+				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
+			}
+
+			let dataset = this.jsonToSection(id);
+
+			let queryEngine = new QueryEngine(dataset, query);
+			let result: InsightResult[] = queryEngine.runEngine();
+
+			if (result.length > this.MAX_SIZE) {
+				// console.log("The result is too big");
+				return Promise.reject(new ResultTooLargeError("The result is too big"));
+			}
+
+			return Promise.resolve(result);
+		} catch (error) {
+			if (error instanceof InsightError) {
+				// console.log("Error is: " + error);
+				return Promise.reject(error);
+			}
+			// console.log("Error is: " + error);
+			return Promise.reject(new InsightError("Invalid query"));
+		}
 	}
 
 
 	public getCurrentAddedDataset(): InsightDataset[] {
-		return this._currentAddedDataset;
+		return this._currentAddedInsightDataset;
 	}
 
 	public setCurrentAddedDataset(value: InsightDataset[]) {
-		this._currentAddedDataset = value;
+		this._currentAddedInsightDataset = value;
 	}
 }
