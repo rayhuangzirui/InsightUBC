@@ -155,22 +155,49 @@ export default class QueryEngine {
 	};
 	private sortDataInOrder(dataset: any[]): any[] {
 		const order = this.getOrder();
+		// console.log("order is " + JSON.stringify(order, null, 2));
 
 		if (!order) {
+			// console.log("No sort");
 			return dataset;
 		}
+		let key = order.key;
+		let comKey = `${key.idstring}_${key.field}`;
 
-		const mappedField = this.fieldMap[order.key.field];
-
+		// console.log("Sorting " + comKey);
 		return dataset.sort((a, b) => {
-			if (typeof a[mappedField] === "string" && typeof b[mappedField] === "string") {
-				return a[mappedField].localeCompare(b[mappedField]);
-			} else if (typeof a[mappedField] === "number" && typeof b[mappedField] === "number") {
-				return a[mappedField] - b[mappedField];
+			if (typeof a[comKey] === "string" && typeof b[comKey] === "string") {
+				if (a[comKey] !== b[comKey]) {
+					return a[comKey].localeCompare(b[comKey]);
+				}
+			} else if (typeof a[comKey] === "number" && typeof b[comKey] === "number") {
+				if (a[comKey] !== b[comKey]) {
+					// console.log("Performed num com");
+					return a[comKey] - b[comKey];
+				}
 			}
 
 			return 0;
 		});
 
 	}
+
+	// private sortHelper(a: any, b: any, mappedField: string, allFields: string[]): number {
+	// 	if (typeof a[mappedField] === "string" && typeof b[mappedField] === "string") {
+	// 		const compareResult = a[mappedField].localeCompare(b[mappedField]);
+	// 		if (compareResult !== 0 || allFields.length === 0) {
+	// 			return compareResult;
+	// 		}
+	//
+	// 		return this.sortHelper(a, b, allFields[0], allFields.slice(1));
+	// 	} else if (typeof a[mappedField] === "number" && typeof b[mappedField] === "number") {
+	// 		const compareResult = a[mappedField].localeCompare(b[mappedField]);
+	// 		if (compareResult !== 0 || allFields.length === 0) {
+	// 			return compareResult;
+	// 		}
+	//
+	// 		return this.sortHelper(a, b, allFields[0], allFields.slice(1));
+	// 	}
+	// 	return 0;
+	// }
 }
