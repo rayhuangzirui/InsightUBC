@@ -31,12 +31,12 @@ export function inputStringValidator(inputString: string): boolean {
 
 export function isMkey(key: any): boolean {
 	const mFields = Object.values(Mfield);
-	return mFields.some((field) => key.endsWith(`_${field}"`));
+	return mFields.some((field) => key.endsWith(`${field}`));
 }
 
 export function isSkey(key: any): boolean {
 	const sFields = Object.values(Sfield);
-	return sFields.some((field) => key.endsWith(`_${field}"`));
+	return sFields.some((field) => key.endsWith(`${field}`));
 }
 
 export function orderKeyValidator(key: Key, key_list: Key[]): boolean {

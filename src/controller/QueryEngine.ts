@@ -17,7 +17,9 @@ export default class QueryEngine {
 
 	constructor(dataset: any[], inputQuery: any) {
 		this.dataset = dataset;
+		// console.log("InputQuery: " + JSON.stringify(inputQuery, null, 2));
 		this.query = parseQuery(inputQuery);
+		// console.log("parsedQuery: " + JSON.stringify(inputQuery, null, 2));
 	}
 
 	public getFilter(): FILTER {
@@ -41,6 +43,7 @@ export default class QueryEngine {
 
 	private filterData(): any[] {
 		let filter = this.getFilter();
+		// console.log("Filter is: " + filter);
 
 		// If no filter, return all entries
 		if (!filter) {
@@ -91,8 +94,11 @@ export default class QueryEngine {
 	}
 
 	private sComHelper(entry: any, sCom: SCOMPARISON): boolean {
+		// console.log("mapped field: " + mappedField);
 		const mappedField = this.fieldMap[sCom.skey.field];
 		const sfieldEntry = entry[mappedField];
+		// console.log("entry: ", entry);
+		// console.log("sfield entry for entry: " + entry + "is: " + sfieldEntry);
 
 		if (sCom.inputstring.startsWith("*") && sCom.inputstring.endsWith("*")) {
 			const string = sCom.inputstring.slice(1, -1);
@@ -115,23 +121,37 @@ export default class QueryEngine {
 	private selectColumnsHelper(entry: any, keys: Key[]): any {
 		let projectedEntry: any = {};
 		for (let key of keys) {
-			let comKey = `"${key.idstring}_${key.field}"`;
-			projectedEntry[comKey] = entry[comKey];
+			let comKey = `${key.idstring}_${key.field}`;
+			let mappedKey = this.fieldMap[key.field];
+			projectedEntry[comKey] = entry[mappedKey];
 		}
 		return projectedEntry;
 	}
 
+	// private fieldMap: {[key in Mfield | Sfield]: string} = {
+	// 	avg: "Avg",
+	// 	pass: "Pass",
+	// 	fail: "Fail",
+	// 	audit: "Audit",
+	// 	year: "Year",
+	// 	dept: "Subject",
+	// 	id: "Course",
+	// 	instructor: "Professor",
+	// 	title: "Title",
+	// 	uuid: "id"
+	// };
+
 	private fieldMap: {[key in Mfield | Sfield]: string} = {
-		avg: "Avg",
-		pass: "Pass",
-		fail: "Fail",
-		audit: "Audit",
-		year: "Year",
-		dept: "Subject",
-		id: "Course",
-		instructor: "Professor",
-		title: "Title",
-		uuid: "id"
+		avg: "_avg",
+		pass: "_pass",
+		fail: "_fail",
+		audit: "_audit",
+		year: "_year",
+		dept: "_dept",
+		id: "_id",
+		instructor: "_instructor",
+		title: "_title",
+		uuid: "_uuid"
 	};
 	private sortDataInOrder(dataset: any[]): any[] {
 		const order = this.getOrder();

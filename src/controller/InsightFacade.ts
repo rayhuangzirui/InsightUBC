@@ -14,9 +14,6 @@ import QueryEngine from "./QueryEngine";
 import {parseQuery} from "./QueryParser";
 import {getIDsFromQuery} from "./Validators";
 
-type DatasetId = string;
-type CourseName = string;
-
 /**
  * This is the main programmatic entry point for the project.
  * Method documentation is in IInsightFacade
@@ -24,14 +21,11 @@ type CourseName = string;
  */
 export default class InsightFacade implements IInsightFacade {
 	private _currentAddedInsightDataset: InsightDataset[] = [];
-	private _currentAddedDatasetId: string[] = [];
+	// private _currentAddedDatasetId: string[] = [];
 	// This map contains the real data for all added datasets
-	private _addedDatasets: Array<{[key: string]: Section[]}>;
+	// private _addedDatasets: Array<{[key: string]: Section[]}>;
 
-	//
-	// datasetList:[] = {ID1: dataset[], ID2: dataset[]...}
 	private MAX_SIZE = 5000;
-	private _currentAddedDataset: InsightDataset[];
 	constructor() {
 		console.log("InsightFacadeImpl::init()");
 	}
@@ -84,8 +78,8 @@ export default class InsightFacade implements IInsightFacade {
 		let datasetToBeAdded: InsightDataset = {
 			id: id, kind: kind, numRows: rowNumber
 		};
-		this._currentAddedDataset.push(datasetToBeAdded);
-		return this._currentAddedDataset.map((dataset) => dataset.id);
+		this._currentAddedInsightDataset.push(datasetToBeAdded);
+		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
 	}
 
 	private isIdKindValid(id: string, kind: InsightDatasetKind): boolean {
@@ -205,8 +199,10 @@ export default class InsightFacade implements IInsightFacade {
 // todo：handle when undefined parameter is passed in constructor
 	// load the dataset from disk, and convert it to a ts Section[] array
 	public jsonToSection(datasetId: string): Section[] {
+		const dataFilePath = path.join(__dirname, "..", "data", datasetId + ".json");
 		// after readfilesync, it's a json string, need to parse it to json object
-		let datafileString = fs.readFileSync("./data/" + datasetId + ".json", "utf8");
+		// let datafileString = fs.readFileSync("./data/" + datasetId + ".json", "utf8");
+		let datafileString = fs.readFileSync(dataFilePath, "utf8");
 		// the data is of nested json format,after parse, it's a ts object array
 		// the array contains ts objects;  each object element contains a json string(the real data fields for a section)
 		let parsedObjectArray = JSON.parse(datafileString);
@@ -247,31 +243,38 @@ export default class InsightFacade implements IInsightFacade {
 			let idFromQuery = getIDsFromQuery(parsedQuery);
 
 			if (idFromQuery.length > 1) {
+				// console.log("Querying multiple datasets is rejected");
 				return Promise.reject(new InsightError("Querying multiple datasets is rejected"));
 			} else if (idFromQuery.length === 0) {
+				// console.log("No key found in the query");
 				return Promise.reject(new InsightError("No key found in the query"));
 			}
 
 			let id = idFromQuery[0];
 
-			let dataList = this._addedDatasets;
-			if (!dataList.some((dataset) => Object.prototype.hasOwnProperty.call(dataset, id))) {
+			let dataList = this._currentAddedInsightDataset;
+			if (!dataList.some((dataset) => dataset.id === id)) {
+				// console.log("Dataset " + id + " does not exist");
 				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
 			}
 
 			let dataset = this.jsonToSection(id);
+
 			let queryEngine = new QueryEngine(dataset, query);
 			let result: InsightResult[] = queryEngine.runEngine();
 
 			if (result.length > this.MAX_SIZE) {
+				// console.log("The result is too big");
 				return Promise.reject(new ResultTooLargeError("The result is too big"));
 			}
 
 			return Promise.resolve(result);
 		} catch (error) {
 			if (error instanceof InsightError) {
+				// console.log("Error is: " + error);
 				return Promise.reject(error);
 			}
+			// console.log("Error is: " + error);
 			return Promise.reject(new InsightError("Invalid query"));
 		}
 	}
@@ -282,6 +285,6 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public setCurrentAddedDataset(value: InsightDataset[]) {
-		this._currentAddedDataset = value;
+		this._currentAddedInsightDataset = value;
 	}
 }
