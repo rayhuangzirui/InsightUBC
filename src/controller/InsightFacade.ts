@@ -9,6 +9,7 @@ import {
 import JSZip from "jszip";
 import path from "path";
 import * as fs from "fs";
+import * as fs_extra from "fs-extra";
 import {Section} from "../model/Section";
 import QueryEngine from "./QueryEngine";
 import {parseQuery} from "./QueryParser";
@@ -21,15 +22,23 @@ import {getIDsFromQuery} from "./Validators";
  */
 export default class InsightFacade implements IInsightFacade {
 	private _currentAddedInsightDataset: InsightDataset[] = [];
-	// private _currentAddedDatasetId: string[] = [];
-	// This map contains the real data for all added datasets
-	// private _addedDatasets: Array<{[key: string]: Section[]}>;
-
 	private MAX_SIZE = 5000;
+	private _initialization: Promise<void>;
+	// private _isLoaded: boolean = false;
 	constructor() {
+		this._initialization = this.init()
+			.then(() => {
+				console.log("init success");
+				// this._isLoaded = true;
+			}).catch(() => console.log("init failed"));
 		console.log("InsightFacadeImpl::init()");
 	}
+
+	private async init() {
+		return await this.loadAddedDatasetFromDisk();
+	}
 	public async addDataset(id: string, content: string, kind: InsightDatasetKind): Promise<string[]> {
+		await this._initialization;
 		if (!this.isIdKindValid(id, kind)) {
 			return Promise.reject(new InsightError());
 		}
@@ -52,7 +61,6 @@ export default class InsightFacade implements IInsightFacade {
 			throw new InsightError("Zip validation failed");
 		}
 		loadedContent.forEach((relativePath, zipEntry) => {
-			// macos creates some metadata files that we don't want to parse
 			if (!zipEntry.dir && !relativePath.startsWith("__MACOSX/") && !relativePath.endsWith(".DS_Store")) {
 				let job = zipEntry.async("string").then((result) => {
 					return {[zipEntry.name]: result};
@@ -60,10 +68,8 @@ export default class InsightFacade implements IInsightFacade {
 				jobs.push(job);
 			}
 		});
-
 		// parsedData is an array of objects, each object is a {key:course name, value:course data}
 		let parsedData;
-
 		try {
 			parsedData = await Promise.all(jobs);
 		} catch (e) {
@@ -71,9 +77,9 @@ export default class InsightFacade implements IInsightFacade {
 		}
 
 		let rowNumber = this.countRowNum(parsedData);
-		const pathToWrite = path.join(__dirname, "..", "data", id + ".json");
+		const pathToWrite = path.join(__dirname, "..","..", "data", id + ".json");
 		let stringfiedData = JSON.stringify(parsedData, null, 2);
-
+		await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
 		fs.writeFileSync(pathToWrite, stringfiedData);
 		let datasetToBeAdded: InsightDataset = {
 			id: id, kind: kind, numRows: rowNumber
@@ -97,7 +103,6 @@ export default class InsightFacade implements IInsightFacade {
 		}
 		return true;
 	}
-
 
 	private countRowNum(parsedData: any[]): number {
 		let rowNumber = 0;
@@ -134,7 +139,6 @@ export default class InsightFacade implements IInsightFacade {
 				} else if (!relativePath.startsWith("courses/")) {
 					isValid = false;
 				} else {
-					// try {
 					const content = await zipEntry.async("string");
 					const parsedJson = JSON.parse(content);
 					if (!parsedJson) {
@@ -144,7 +148,6 @@ export default class InsightFacade implements IInsightFacade {
 			})();
 			validationPromises.push(promise);
 		});
-
 		await Promise.all(validationPromises);
 		if (totalDirectories !== 1) {
 			isValid = false;
@@ -153,6 +156,7 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async removeDataset(id: string): Promise<string> {
+		await this._initialization;
 		try {
 			if (!this.isIdKindValid(id, InsightDatasetKind.Sections)) {
 				return Promise.reject(new InsightError());
@@ -164,16 +168,16 @@ export default class InsightFacade implements IInsightFacade {
 			}
 			// remove from memory cache
 			this._currentAddedInsightDataset = this._currentAddedInsightDataset.filter((dataset) => dataset.id !== id);
-			const pathToDelete = path.join(__dirname, "..", "data", id + ".json");
+			const pathToDelete = path.join(__dirname, "..","..", "data", id + ".json");
 			await fs.promises.unlink(pathToDelete);
 			return id;
-
 		} catch (error) {
 			return Promise.reject(new InsightError("failed to remove dataset"));
 		}
 	}
 
 	public async listDatasets(): Promise<InsightDataset[]> {
+		await this._initialization;
 		try {
 			return this._currentAddedInsightDataset;
 		} catch (error) {
@@ -181,44 +185,54 @@ export default class InsightFacade implements IInsightFacade {
 		}
 	}
 
-
+	// push the existing dataset to the _currentAddedInsightDataset for handling crashes
 	public async loadAddedDatasetFromDisk(): Promise<void> {
-		const content = await fs.promises.readdir(path.join(__dirname, "..", "data"));
+		await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
+		const files = await fs_extra.promises.readdir(path.join(__dirname, "..","..", "data"));
+
+		const filePromises = files.map(async (file) => {
+			if (file === ".gitkeep") {
+				return;
+			}
+			const filePath = path.join(__dirname, "..", "..","data", file);
+			const stat = await fs_extra.stat(filePath);
+
+			if (stat.isFile()) {
+				const fileContent = await fs_extra.readFile(filePath, "utf8");
+				const parsedData = (JSON.parse(fileContent) as any[]);
+
+				this._currentAddedInsightDataset.push({
+					id: file.split(".")[0],
+					kind: InsightDatasetKind.Sections,
+					numRows: this.extractResultValues(parsedData).length
+				});
+			}
+		});
+
+		await Promise.all(filePromises);
 	}
 
-	// convert each section record within a dataset json file to a Section object
-/*	public jsonToSection(sectionRecordJson: any): Section {
-	}
-		const sectionObject = JSON.parse(sectionRecordJson, (key, value) => {
-			if (key === "Year") {
 
-		}
-		return new Section();
-
-	}*/
 // todo：handle when undefined parameter is passed in constructor
 	// load the dataset from disk, and convert it to a ts Section[] array
 	public jsonToSection(datasetId: string): Section[] {
-		const dataFilePath = path.join(__dirname, "..", "data", datasetId + ".json");
+		this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
+		const dataFilePath = path.join(__dirname, "..","..", "data", datasetId + ".json");
 		// after readfilesync, it's a json string, need to parse it to json object
-		// let datafileString = fs.readFileSync("./data/" + datasetId + ".json", "utf8");
 		let datafileString = fs.readFileSync(dataFilePath, "utf8");
 		// the data is of nested json format,after parse, it's a ts object array
 		// the array contains ts objects;  each object element contains a json string(the real data fields for a section)
 		let parsedObjectArray = JSON.parse(datafileString);
 		// return all the section data in the file as an Object[]
 		let sectionRawData = this.extractResultValues(parsedObjectArray);
-		// console.log(parsedObject.Subject);
 		let sectionArray: Section[] = [];
 		for (let section of sectionRawData) {
 			let testsection = new Section(section.Subject, section.Course,
 				section.Avg, section.Professor, section.Title,
 				section.Pass, section.Fail, section.Audit,
-				section.id, section.Year);
+				String(section.id), Number(section.Year));
 			sectionArray.push(testsection);
-			// console.log(testsection);
 		}
-		// console.log(sectionArray);
 		return sectionArray;
 	}
 
@@ -233,20 +247,18 @@ export default class InsightFacade implements IInsightFacade {
 				}
 			}
 		});
-
 		return results;
 	}
 
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
+		await this._initialization;
 		try {
 			let parsedQuery = parseQuery(query);
 			let idFromQuery = getIDsFromQuery(parsedQuery);
 
 			if (idFromQuery.length > 1) {
-				// console.log("Querying multiple datasets is rejected");
 				return Promise.reject(new InsightError("Querying multiple datasets is rejected"));
 			} else if (idFromQuery.length === 0) {
-				// console.log("No key found in the query");
 				return Promise.reject(new InsightError("No key found in the query"));
 			}
 
@@ -254,34 +266,32 @@ export default class InsightFacade implements IInsightFacade {
 
 			let dataList = this._currentAddedInsightDataset;
 			if (!dataList.some((dataset) => dataset.id === id)) {
-				// console.log("Dataset " + id + " does not exist");
 				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
 			}
 
 			let dataset = this.jsonToSection(id);
-
 			let queryEngine = new QueryEngine(dataset, query);
 			let result: InsightResult[] = queryEngine.runEngine();
 
 			if (result.length > this.MAX_SIZE) {
-				// console.log("The result is too big");
 				return Promise.reject(new ResultTooLargeError("The result is too big"));
 			}
-
 			return Promise.resolve(result);
 		} catch (error) {
 			if (error instanceof InsightError) {
-				// console.log("Error is: " + error);
 				return Promise.reject(error);
 			}
-			// console.log("Error is: " + error);
 			return Promise.reject(new InsightError("Invalid query"));
 		}
 	}
 
-
 	public getCurrentAddedDataset(): InsightDataset[] {
 		return this._currentAddedInsightDataset;
+	}
+
+	public async  ensureDirectoryExists(dataFolderPath: string) {
+		await this._initialization;
+		await fs_extra.ensureDir(dataFolderPath);
 	}
 
 	public setCurrentAddedDataset(value: InsightDataset[]) {
