@@ -10,16 +10,19 @@ import {
 } from "./QueryInterfaces";
 import {MCOMPARATOR, LOGIC, Sfield, Mfield} from "./ClausesEnum";
 import {parseQuery} from "./QueryParser";
+import {ResultTooLargeError} from "./IInsightFacade";
 
 export default class QueryEngine {
 	public dataset: any[];
 	public query: Query;
+	private MAX_SIZE;
 
-	constructor(dataset: any[], inputQuery: any) {
+	constructor(dataset: any[], inputQuery: any, max_size: number) {
 		this.dataset = dataset;
 		// console.log("InputQuery: " + JSON.stringify(inputQuery, null, 2));
 		this.query = parseQuery(inputQuery);
 		// console.log("parsedQuery: " + JSON.stringify(inputQuery, null, 2));
+		this.MAX_SIZE = max_size;
 	}
 
 	public getFilter(): FILTER {
@@ -115,7 +118,13 @@ export default class QueryEngine {
 	private selectColumns(dataset: any[]): any[] {
 		const columnKeys = this.getColumns().key_list;
 
-		return dataset.map((entry) => this.selectColumnsHelper(entry, columnKeys));
+		const mappedDataset = dataset.map((entry) => this.selectColumnsHelper(entry, columnKeys));
+		if (mappedDataset.length > this.MAX_SIZE) {
+			throw new ResultTooLargeError("The result is too big. " +
+				"Only queries with a maximum of 5000 results are supported.");
+		}
+
+		return mappedDataset.filter((entry) => Object.keys(entry).length > 0);
 	}
 
 	private selectColumnsHelper(entry: any, keys: Key[]): any {
@@ -123,23 +132,42 @@ export default class QueryEngine {
 		for (let key of keys) {
 			let comKey = `${key.idstring}_${key.field}`;
 			let mappedKey = this.fieldMap[key.field];
+
+			if (!this.isValidField(mappedKey, entry[mappedKey])) {
+				return {};
+			}
+
 			projectedEntry[comKey] = entry[mappedKey];
 		}
 		return projectedEntry;
 	}
 
-	// private fieldMap: {[key in Mfield | Sfield]: string} = {
-	// 	avg: "Avg",
-	// 	pass: "Pass",
-	// 	fail: "Fail",
-	// 	audit: "Audit",
-	// 	year: "Year",
-	// 	dept: "Subject",
-	// 	id: "Course",
-	// 	instructor: "Professor",
-	// 	title: "Title",
-	// 	uuid: "id"
-	// };
+	private isValidField(mappedKey: string, value: any): boolean {
+		switch (mappedKey) {
+			case "_dept":
+				return typeof value === "string" && value.trim() !== "";
+			case "_id":
+				return typeof value === "string" && value.trim() !== "";
+			case "_instructor":
+				return typeof value === "string" && value.trim() !== "";
+			case "_title":
+				return typeof value === "string" && value.trim() !== "";
+			case "_uuid":
+				return typeof value === "string" && value.trim() !== "";
+			case "_avg":
+				return typeof value === "number";
+			case "_pass":
+				return typeof value === "number";
+			case "_fail":
+				return typeof value === "number";
+			case "_audit":
+				return typeof value === "number";
+			case "_year":
+				return typeof value === "number";
+			default:
+				return false;
+		}
+	}
 
 	private fieldMap: {[key in Mfield | Sfield]: string} = {
 		avg: "_avg",
@@ -182,22 +210,4 @@ export default class QueryEngine {
 
 	}
 
-	// private sortHelper(a: any, b: any, mappedField: string, allFields: string[]): number {
-	// 	if (typeof a[mappedField] === "string" && typeof b[mappedField] === "string") {
-	// 		const compareResult = a[mappedField].localeCompare(b[mappedField]);
-	// 		if (compareResult !== 0 || allFields.length === 0) {
-	// 			return compareResult;
-	// 		}
-	//
-	// 		return this.sortHelper(a, b, allFields[0], allFields.slice(1));
-	// 	} else if (typeof a[mappedField] === "number" && typeof b[mappedField] === "number") {
-	// 		const compareResult = a[mappedField].localeCompare(b[mappedField]);
-	// 		if (compareResult !== 0 || allFields.length === 0) {
-	// 			return compareResult;
-	// 		}
-	//
-	// 		return this.sortHelper(a, b, allFields[0], allFields.slice(1));
-	// 	}
-	// 	return 0;
-	// }
 }

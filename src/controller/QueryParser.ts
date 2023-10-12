@@ -1,8 +1,6 @@
 import {
-	COLUMNS, FILTER, Key,
-	LOGICCOMPARISON, MCOMPARISON,
-	Mkey, NEGATION, OPTIONS, ORDER,
-	Query, SCOMPARISON, Skey, WHERE} from "./QueryInterfaces";
+	COLUMNS, FILTER, Key, LOGICCOMPARISON, MCOMPARISON,
+	Mkey, NEGATION, OPTIONS, ORDER, Query, SCOMPARISON, Skey, WHERE} from "./QueryInterfaces";
 import {WhereClause, NOT, IS, Mfield, Sfield,
 	LOGIC, MCOMPARATOR, OrderClause, ColumnsClause, OptionsClause} from "./ClausesEnum";
 import {IDValidator, inputStringValidator, isMkey, isSkey, orderKeyValidator} from "./Validators";
@@ -14,16 +12,21 @@ export function parseQuery(query: any): Query {
 	}
 	let parsedQuery = query;
 
+	try {
+		let jsonQuery = JSON.stringify(query);
+		JSON.parse(jsonQuery);
+	} catch (e) {
+		throw new InsightError("Invalid JSON format");
+	}
+
 	let body = Object.keys(parsedQuery)[0];
 	if (!Object.values(WhereClause).includes(body as WhereClause)) {
 		throw new InsightError("Invalid WHERE clause: " + body);
 	}
-
 	let options = Object.keys(parsedQuery)[1];
 	if (!Object.values(OptionsClause).includes(options as OptionsClause)) {
 		throw new InsightError("Invalid OPTIONS clause: " + options);
 	}
-
 	return {
 		body: parseWhere(parsedQuery[body]),
 		options: parseOptions(parsedQuery[options])
@@ -34,11 +37,9 @@ export function parseWhere(where: any): WHERE {
 	if (!where || Object.keys(where).length === 0) {
 		return {};
 	}
-
 	if (Object.keys(where).length > 1) {
 		throw new InsightError("WHERE should only have 1 key, has " + Object.keys(where).length);
 	}
-
 	return {
 		filter: parseFilter(where),
 	};

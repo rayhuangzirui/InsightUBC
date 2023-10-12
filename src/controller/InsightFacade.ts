@@ -270,15 +270,14 @@ export default class InsightFacade implements IInsightFacade {
 			}
 
 			let dataset = this.jsonToSection(id);
-			let queryEngine = new QueryEngine(dataset, query);
+			let queryEngine = new QueryEngine(dataset, query, this.MAX_SIZE);
 			let result: InsightResult[] = queryEngine.runEngine();
 
-			if (result.length > this.MAX_SIZE) {
-				return Promise.reject(new ResultTooLargeError("The result is too big"));
-			}
 			return Promise.resolve(result);
 		} catch (error) {
 			if (error instanceof InsightError) {
+				return Promise.reject(error);
+			} else if (error instanceof ResultTooLargeError) {
 				return Promise.reject(error);
 			}
 			return Promise.reject(new InsightError("Invalid query"));
