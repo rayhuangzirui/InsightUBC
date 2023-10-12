@@ -249,35 +249,34 @@ export default class InsightFacade implements IInsightFacade {
 		});
 		return results;
 	}
-
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
 		await this._initialization;
 		try {
 			let parsedQuery = parseQuery(query);
 			let idFromQuery = getIDsFromQuery(parsedQuery);
-
 			if (idFromQuery.length > 1) {
 				return Promise.reject(new InsightError("Querying multiple datasets is rejected"));
 			} else if (idFromQuery.length === 0) {
 				return Promise.reject(new InsightError("No key found in the query"));
 			}
-
 			let id = idFromQuery[0];
-
 			let dataList = this._currentAddedInsightDataset;
 			if (!dataList.some((dataset) => dataset.id === id)) {
 				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
 			}
 
 			let dataset = this.jsonToSection(id);
-			let queryEngine = new QueryEngine(dataset, query, this.MAX_SIZE);
+			let queryEngine = new QueryEngine(dataset, query);
 			let result: InsightResult[] = queryEngine.runEngine();
+
+			if (result.length > this.MAX_SIZE) {
+				return Promise.reject(new ResultTooLargeError("The result is too big. " +
+					"Only queries with a maximum of 5000 results are supported."));
+			}
 
 			return Promise.resolve(result);
 		} catch (error) {
 			if (error instanceof InsightError) {
-				return Promise.reject(error);
-			} else if (error instanceof ResultTooLargeError) {
 				return Promise.reject(error);
 			}
 			return Promise.reject(new InsightError("Invalid query"));
