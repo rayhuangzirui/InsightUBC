@@ -10,19 +10,19 @@ import {
 } from "./QueryInterfaces";
 import {MCOMPARATOR, LOGIC, Sfield, Mfield} from "./ClausesEnum";
 import {parseQuery} from "./QueryParser";
-import {ResultTooLargeError} from "./IInsightFacade";
+// import {ResultTooLargeError} from "./IInsightFacade";
 
 export default class QueryEngine {
 	public dataset: any[];
 	public query: Query;
-	private MAX_SIZE;
+	// private MAX_SIZE;
 
-	constructor(dataset: any[], inputQuery: any, max_size: number) {
+	constructor(dataset: any[], inputQuery: any) {
 		this.dataset = dataset;
 		// console.log("InputQuery: " + JSON.stringify(inputQuery, null, 2));
 		this.query = parseQuery(inputQuery);
 		// console.log("parsedQuery: " + JSON.stringify(inputQuery, null, 2));
-		this.MAX_SIZE = max_size;
+		// this.MAX_SIZE = max_size;
 	}
 
 	public getFilter(): FILTER {
@@ -119,10 +119,10 @@ export default class QueryEngine {
 		const columnKeys = this.getColumns().key_list;
 
 		const mappedDataset = dataset.map((entry) => this.selectColumnsHelper(entry, columnKeys));
-		if (mappedDataset.length > this.MAX_SIZE) {
-			throw new ResultTooLargeError("The result is too big. " +
-				"Only queries with a maximum of 5000 results are supported.");
-		}
+		// if (mappedDataset.length > this.MAX_SIZE) {
+		// 	throw new ResultTooLargeError("The result is too big. " +
+		// 		"Only queries with a maximum of 5000 results are supported.");
+		// }
 
 		return mappedDataset.filter((entry) => Object.keys(entry).length > 0);
 	}
@@ -144,16 +144,17 @@ export default class QueryEngine {
 
 	private isValidField(mappedKey: string, value: any): boolean {
 		switch (mappedKey) {
+			// && value.trim() !== ""
 			case "_dept":
-				return typeof value === "string" && value.trim() !== "";
+				return typeof value === "string";
 			case "_id":
-				return typeof value === "string" && value.trim() !== "";
+				return typeof value === "string";
 			case "_instructor":
-				return typeof value === "string" && value.trim() !== "";
+				return typeof value === "string";
 			case "_title":
-				return typeof value === "string" && value.trim() !== "";
+				return typeof value === "string" ;
 			case "_uuid":
-				return typeof value === "string" && value.trim() !== "";
+				return typeof value === "string";
 			case "_avg":
 				return typeof value === "number";
 			case "_pass":

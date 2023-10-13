@@ -34,7 +34,11 @@ export function parseQuery(query: any): Query {
 }
 
 export function parseWhere(where: any): WHERE {
-	if (!where || Object.keys(where).length === 0) {
+	if (!where) {
+		throw new InsightError("WHERE must be an object");
+	}
+
+	if (Object.keys(where).length === 0) {
 		return {};
 	}
 	if (Object.keys(where).length > 1) {
@@ -80,10 +84,13 @@ export function parseLogicComparison(logicCom: any): LOGICCOMPARISON {
 	let parsedFilters: FILTER[] = [];
 
 	if (filters.length === 0){
-		throw new InsightError(logicComparator + " must be a non-empty");
+		throw new InsightError(logicComparator + " must be a non-empty array");
 	}
 
 	for (let filter of filters) {
+		if (!filter) {
+			throw new InsightError("AND must be an object");
+		}
 		let parsedFilter = parseFilter(filter);
 		parsedFilters.push(parsedFilter);
 	}
@@ -181,21 +188,17 @@ export function parseSKey(sKey: any): Skey {
 	if (parts.length !== 2) {
 		throw new InsightError("Invalid mkey format: " + sKey);
 	}
-
 	let [idstring, sfield] = parts;
 
 	if (!sKey.includes("_")) {
 		throw new InsightError("Invalid skey format");
 	}
-
 	if (!IDValidator(idstring)) {
 		throw new InsightError("Invalid ID");
 	}
-
 	if (!Object.values(Sfield).includes(sfield as Sfield)) {
 		throw new InsightError("Invalid sfield value");
 	}
-
 	return {
 		idstring: idstring,
 		field: sfield as Sfield,
@@ -215,7 +218,6 @@ export function parseNegation(negation: any): NEGATION {
 		filter: filter,
 	};
 }
-
 export function parseOptions(options: any): OPTIONS{
 	if (!Object.prototype.hasOwnProperty.call(options, "COLUMNS")) {
 		throw new InsightError("OPTIONS missing COLUMNS");
@@ -240,7 +242,6 @@ export function parseOptions(options: any): OPTIONS{
 		if (typeof orderKey !== "string") {
 			throw new InsightError("Invalid ORDER key type: " + typeof orderKey);
 		}
-
 		if (keyList.includes(orderKey)) {
 			return {
 				columns: parseColumns(keyList),
@@ -255,7 +256,6 @@ export function parseOptions(options: any): OPTIONS{
 		};
 	}
 }
-
 export function parseColumns(columns: any): COLUMNS {
 	let keys: Key[] = [];
 	for (const key of columns) {
@@ -280,7 +280,6 @@ export function parseKey(key: any): Key{
 	if (!key) {
 		throw new InsightError("Invalid key");
 	}
-
 	if (isMkey(key)) {
 		return parseMKey(key);
 	} else if (isSkey(key)) {
