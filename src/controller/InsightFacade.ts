@@ -14,6 +14,7 @@ import {Section} from "../model/Section";
 import QueryEngine from "./QueryEngine";
 import {parseQuery} from "./QueryParser";
 import {getIDsFromQuery} from "./Validators";
+import {extractResultValues,jsonToSection,isValidZip,isIdKindValid,countRowNum} from "./InsightHelpers";
 
 /**
  * This is the main programmatic entry point for the project.
@@ -30,30 +31,38 @@ export default class InsightFacade implements IInsightFacade {
 			.then(() => {
 				console.log("init success");
 				// this._isLoaded = true;
-			}).catch(() => console.log("init failed"));
+			}).catch(() => {
+				console.log("init failed");
+				throw new InsightError("init failed");
+			});
 		console.log("InsightFacadeImpl::init()");
 	}
 
 	private async init() {
-		return await this.loadAddedDatasetFromDisk();
+		try {
+			return await this.loadAddedDatasetFromDisk();
+		} catch (e) {
+			throw new InsightError("init failed");
+		}
 	}
 	public async addDataset(id: string, content: string, kind: InsightDatasetKind): Promise<string[]> {
-		await this._initialization;
-		if (!this.isIdKindValid(id, kind)) {
+		try {
+			await this._initialization;
+		} catch (e) {
+			return Promise.reject(new InsightError("init failed"));
+		}
+		if (!isIdKindValid(id, kind)) {
 			return Promise.reject(new InsightError());
 		}
 		if (this._currentAddedInsightDataset.some((dataset) => dataset.id === id)) {
 			return Promise.reject(new InsightError("Dataset already exists"));
 		}
-
 		let zip = new JSZip();
 		let jobs: Array<Promise<{[course: string]: string}>> = [];
-		// if the input file is not a valid zip file, it will throw an error
 		let loadedContent;
-
 		try {
 			loadedContent = await zip.loadAsync(content, {base64: true});
-			const isValid = await this.isValidZip(loadedContent);
+			const isValid = await isValidZip(loadedContent);
 			if (!isValid) {
 				throw new InsightError("Zip is not valid");
 			}
@@ -64,6 +73,8 @@ export default class InsightFacade implements IInsightFacade {
 			if (!zipEntry.dir && !relativePath.startsWith("__MACOSX/") && !relativePath.endsWith(".DS_Store")) {
 				let job = zipEntry.async("string").then((result) => {
 					return {[zipEntry.name]: result};
+				}).catch((error) => {
+					throw new InsightError("error parsing section data");
 				});
 				jobs.push(job);
 			}
@@ -75,90 +86,33 @@ export default class InsightFacade implements IInsightFacade {
 		} catch (e) {
 			throw new InsightError("error parsing course data");
 		}
-
-		let rowNumber = this.countRowNum(parsedData);
-		const pathToWrite = path.join(__dirname, "..","..", "data", id + ".json");
-		let stringfiedData = JSON.stringify(parsedData, null, 2);
-		await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
-		fs.writeFileSync(pathToWrite, stringfiedData);
+		await this.writeDataToFile(id, parsedData);
 		let datasetToBeAdded: InsightDataset = {
-			id: id, kind: kind, numRows: rowNumber
+			id: id, kind: kind, numRows: countRowNum(parsedData)
 		};
 		this._currentAddedInsightDataset.push(datasetToBeAdded);
 		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
 	}
 
-	private isIdKindValid(id: string, kind: InsightDatasetKind): boolean {
-		if (id === null || id === undefined) {
-			return false;
+	private async writeDataToFile(id: string, parsedData: any[]): Promise<void> {
+		try {
+			const pathToWrite = path.join(__dirname, "..", "..", "data", id + ".json");
+			let stringfiedData = JSON.stringify(parsedData, null, 2);
+			await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
+			fs.writeFileSync(pathToWrite, stringfiedData);
+		} catch (e) {
+			throw new InsightError("error writing to file");
 		}
-		if (/^\s*$/.test(id)) {
-			return false;
-		}
-		if (!/^[^_]+$/.test(id)) {
-			return false;
-		}
-		if (kind === InsightDatasetKind.Rooms) {
-			return false;
-		}
-		return true;
-	}
-
-	private countRowNum(parsedData: any[]): number {
-		let rowNumber = 0;
-
-		for (let data of parsedData) {
-			for (let key in data) {
-				let courseData;
-
-				try {
-					courseData = JSON.parse(data[key]);
-					if (courseData.result && Array.isArray(courseData.result)) {
-						rowNumber += courseData.result.length;
-					}
-				} catch (err) {
-					throw new InsightError("error parsing section data");
-				}
-			}
-		}
-		return rowNumber;
-	}
-
-	private async isValidZip(loadedContent: JSZip): Promise<boolean> {
-		let totalDirectories = 0;
-		let isValid = true;
-		let validationPromises: Array<Promise<any>> = [];
-
-		loadedContent.forEach((relativePath, zipEntry) => {
-			const promise = (async () => {
-				if (zipEntry.dir) {
-					totalDirectories++;
-					if (totalDirectories > 1 || relativePath !== "courses/") {
-						isValid = false;
-					}
-				} else if (!relativePath.startsWith("courses/")) {
-					isValid = false;
-				} else {
-					const content = await zipEntry.async("string");
-					const parsedJson = JSON.parse(content);
-					if (!parsedJson) {
-						isValid = false;
-					}
-				}
-			})();
-			validationPromises.push(promise);
-		});
-		await Promise.all(validationPromises);
-		if (totalDirectories !== 1) {
-			isValid = false;
-		}
-		return isValid;
 	}
 
 	public async removeDataset(id: string): Promise<string> {
-		await this._initialization;
 		try {
-			if (!this.isIdKindValid(id, InsightDatasetKind.Sections)) {
+			await this._initialization;
+		} catch (e) {
+			return Promise.reject(new InsightError("init failed"));
+		}
+		try {
+			if (!isIdKindValid(id, InsightDatasetKind.Sections)) {
 				return Promise.reject(new InsightError());
 			}
 			// js/ts has garbage collection, so we don't need to manully free memory for the removed dataset
@@ -177,7 +131,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async listDatasets(): Promise<InsightDataset[]> {
-		await this._initialization;
+		try {
+			await this._initialization;
+		} catch (e) {
+			return Promise.reject(new InsightError("init failed"));
+		}
 		try {
 			return this._currentAddedInsightDataset;
 		} catch (error) {
@@ -187,70 +145,41 @@ export default class InsightFacade implements IInsightFacade {
 
 	// push the existing dataset to the _currentAddedInsightDataset for handling crashes
 	public async loadAddedDatasetFromDisk(): Promise<void> {
-		await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
-		const files = await fs_extra.promises.readdir(path.join(__dirname, "..","..", "data"));
-
-		const filePromises = files.map(async (file) => {
-			if (file === ".gitkeep") {
-				return;
-			}
-			const filePath = path.join(__dirname, "..", "..","data", file);
-			const stat = await fs_extra.stat(filePath);
-
-			if (stat.isFile()) {
-				const fileContent = await fs_extra.readFile(filePath, "utf8");
-				const parsedData = (JSON.parse(fileContent) as any[]);
-
-				this._currentAddedInsightDataset.push({
-					id: file.split(".")[0],
-					kind: InsightDatasetKind.Sections,
-					numRows: this.extractResultValues(parsedData).length
-				});
-			}
-		});
-
-		await Promise.all(filePromises);
-	}
-
-
-// todo：handle when undefined parameter is passed in constructor
-	// load the dataset from disk, and convert it to a ts Section[] array
-	public jsonToSection(datasetId: string): Section[] {
-		this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
-		const dataFilePath = path.join(__dirname, "..","..", "data", datasetId + ".json");
-		// after readfilesync, it's a json string, need to parse it to json object
-		let datafileString = fs.readFileSync(dataFilePath, "utf8");
-		// the data is of nested json format,after parse, it's a ts object array
-		// the array contains ts objects;  each object element contains a json string(the real data fields for a section)
-		let parsedObjectArray = JSON.parse(datafileString);
-		// return all the section data in the file as an Object[]
-		let sectionRawData = this.extractResultValues(parsedObjectArray);
-		let sectionArray: Section[] = [];
-		for (let section of sectionRawData) {
-			let testsection = new Section(section.Subject, section.Course,
-				section.Avg, section.Professor, section.Title,
-				section.Pass, section.Fail, section.Audit,
-				String(section.id), Number(section.Year));
-			sectionArray.push(testsection);
-		}
-		return sectionArray;
-	}
-
-	public extractResultValues(data: any[]): any[] {
-		const results: any[] = [];
-
-		data.forEach((item) => {
-			for (const key in item) {
-				const innerObject = JSON.parse(item[key]);
-				if ("result" in innerObject) {
-					results.push(...innerObject.result);
+		try {
+			// to ensure the data folder exists
+			await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
+			const files = await fs_extra.promises.readdir(path.join(__dirname, "..", "..", "data"));
+			const filePromises = files.map(async (file) => {
+				if (file === ".gitkeep") {
+					return;
 				}
-			}
-		});
-		return results;
+				const filePath = path.join(__dirname, "..", "..", "data", file);
+				const stat = await fs_extra.stat(filePath);
+
+				if (stat.isFile()) {
+					const fileContent = await fs_extra.readFile(filePath, "utf8");
+					const parsedData = (JSON.parse(fileContent) as any[]);
+
+					this._currentAddedInsightDataset.push({
+						id: file.split(".")[0],
+						kind: InsightDatasetKind.Sections,
+						numRows: extractResultValues(parsedData).length
+					});
+				}
+			});
+
+			await Promise.all(filePromises);
+		} catch (e) {
+			throw new InsightError("error loading dataset from disk");
+		}
 	}
+
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
-		await this._initialization;
+		try {
+			await this._initialization;
+		} catch (e) {
+			return Promise.reject(new InsightError("init failed"));
+		}
 		try {
 			let parsedQuery = parseQuery(query);
 			let idFromQuery = getIDsFromQuery(parsedQuery);
@@ -265,7 +194,7 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
 			}
 
-			let dataset = this.jsonToSection(id);
+			let dataset = jsonToSection(id);
 			let queryEngine = new QueryEngine(dataset, query);
 			let result: InsightResult[] = queryEngine.runEngine();
 
