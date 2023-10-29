@@ -3,7 +3,11 @@ import {Section} from "../model/Section";
 import path from "path";
 import fs from "fs";
 import JSZip from "jszip";
+import {parse,DefaultTreeAdapterMap} from "parse5";
+import * as parse5 from "parse5";
+import {Building} from "../model/Building";
 
+export let tables: any[] = [];
 export function extractResultValues(data: any[]): any[] {
 	try {
 		const results: any[] = [];
@@ -116,3 +120,32 @@ export function countRowNum(parsedData: any[]): number {
 	}
 	return rowNumber;
 }
+
+// parse the index.html to a dom-like tree
+export async function parseRoomData(content: string): Promise<Array<DefaultTreeAdapterMap["childNode"]>> {
+	let zip = new JSZip();
+	let indexContent;
+	let textContent;
+	await zip.loadAsync(content, {base64: true}).then(async function(contents) {
+		// 返回代表index.html文件对象
+		indexContent = contents.file("index.htm");
+		if (indexContent) {
+			// text string; content of index.html
+			textContent = await indexContent.async("text");
+			if (textContent) {
+				// return a document object, this object is similar to the DOM tree
+				return parse5.parse(textContent).childNodes;
+			}
+		} else {
+			throw new Error("no index.htm in zip");
+		}
+	});
+	if (textContent) {
+
+		return parse5.parse(textContent).childNodes;
+	} else {
+		throw new Error("Failed to parse the content.");
+	}
+}
+
+
