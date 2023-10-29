@@ -1,53 +1,8 @@
-import {
-	COLUMNS, FILTER, Key, LOGICCOMPARISON, MCOMPARISON,
-	Mkey, NEGATION, OPTIONS, ORDER, Query, SCOMPARISON, Skey, WHERE} from "./QueryInterfaces";
-import {WhereClause, NOT, IS, Mfield, Sfield,
-	LOGIC, MCOMPARATOR, OrderClause, ColumnsClause, OptionsClause} from "./ClausesEnum";
-import {IDValidator, inputStringValidator, isMkey, isSkey, orderKeyValidator} from "./Validators";
-import {InsightError} from "./IInsightFacade";
+import {FILTER, Key, LOGICCOMPARISON, MCOMPARISON, Mkey, NEGATION, SCOMPARISON, Skey} from "./QueryInterfaces";
+import {IS, LOGIC, MCOMPARATOR, Mfield, NOT, Sfield} from "./ClausesEnum";
+import {InsightError} from "../controller/IInsightFacade";
+import {IDValidator, inputStringValidator, isMkey, isSkey} from "./Validators";
 
-export function parseQuery(query: any): Query {
-	if (typeof query !== "object") {
-		throw new InsightError("Invalid JSON format");
-	}
-	let parsedQuery = query;
-
-	try {
-		let jsonQuery = JSON.stringify(query);
-		JSON.parse(jsonQuery);
-	} catch (e) {
-		throw new InsightError("Invalid JSON format");
-	}
-
-	let body = Object.keys(parsedQuery)[0];
-	if (!Object.values(WhereClause).includes(body as WhereClause)) {
-		throw new InsightError("Invalid WHERE clause: " + body);
-	}
-	let options = Object.keys(parsedQuery)[1];
-	if (!Object.values(OptionsClause).includes(options as OptionsClause)) {
-		throw new InsightError("Invalid OPTIONS clause: " + options);
-	}
-	return {
-		body: parseWhere(parsedQuery[body]),
-		options: parseOptions(parsedQuery[options])
-	};
-}
-
-export function parseWhere(where: any): WHERE {
-	if (!where) {
-		throw new InsightError("WHERE must be an object");
-	}
-
-	if (Object.keys(where).length === 0) {
-		return {};
-	}
-	if (Object.keys(where).length > 1) {
-		throw new InsightError("WHERE should only have 1 key, has " + Object.keys(where).length);
-	}
-	return {
-		filter: parseFilter(where),
-	};
-}
 export function parseFilter(filter: any): FILTER {
 	if (!filter) {
 		return {};
@@ -218,63 +173,6 @@ export function parseNegation(negation: any): NEGATION {
 		filter: filter,
 	};
 }
-export function parseOptions(options: any): OPTIONS{
-	if (!Object.prototype.hasOwnProperty.call(options, "COLUMNS")) {
-		throw new InsightError("OPTIONS missing COLUMNS");
-	}
-
-	let columns = Object.keys(options)[0];
-	if (!Object.values(ColumnsClause).includes(columns as ColumnsClause)) {
-		throw new InsightError("Invalid COLUMNS clause: " + columns);
-	}
-	let keyList = options[columns];
-	if (!keyList || !Array.isArray(keyList)) {
-		throw new InsightError("Invalid columns list");
-	}
-	let order = Object.keys(options)[1];
-
-	if (order !== undefined && !Object.values(OrderClause).includes(order as OrderClause)) {
-		throw new InsightError("Invalid ORDER clause: " + order);
-	}
-	if (Object.prototype.hasOwnProperty.call(options, "ORDER")) {
-		let orderKey = options["ORDER"];
-
-		if (typeof orderKey !== "string") {
-			throw new InsightError("Invalid ORDER key type: " + typeof orderKey);
-		}
-		if (keyList.includes(orderKey)) {
-			return {
-				columns: parseColumns(keyList),
-				order: parseOrder(orderKey, keyList)
-			};
-		} else {
-			throw new InsightError("ORDER key: " + orderKey + " is not found in COLUMNS key list");
-		}
-	} else {
-		return {
-			columns: parseColumns(keyList)
-		};
-	}
-}
-export function parseColumns(columns: any): COLUMNS {
-	let keys: Key[] = [];
-	for (const key of columns) {
-		if (typeof key !== "string") {
-			throw new InsightError("Expected COLUMNS keys to be string, but was " + typeof key);
-		}
-		let parsedKey = parseKey(key);
-		if (!parsedKey) {
-			throw new InsightError("Invalid key");
-		}
-		keys.push(parsedKey);
-	}
-	if (keys.length === 0) {
-		throw new InsightError("COLUMNS must be a non-empty array");
-	}
-	return {
-		key_list: keys,
-	};
-}
 
 export function parseKey(key: any): Key{
 	if (!key) {
@@ -287,13 +185,4 @@ export function parseKey(key: any): Key{
 	} else {
 		throw new InsightError("No appropriate key");
 	}
-}
-
-export function parseOrder(orderKey: any, key_list: Key[]): ORDER {
-	if (!orderKeyValidator(orderKey, key_list)) {
-		throw new InsightError("ORDER key must be in COLUMNS");
-	}
-	return {
-		key: parseKey(orderKey),
-	};
 }

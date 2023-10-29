@@ -12,8 +12,8 @@ import * as fs from "fs";
 import * as fs_extra from "fs-extra";
 import {Section} from "../model/Section";
 import QueryEngine from "./QueryEngine";
-import {parseQuery} from "./QueryParser";
-import {getIDsFromQuery} from "./Validators";
+import {parseQuery} from "../QueryParsers/QueryParser";
+import {getIDsFromQuery} from "../QueryParsers/Validators";
 import {extractResultValues,jsonToSection,isValidZip,isIdKindValid,countRowNum} from "./InsightHelpers";
 
 /**
@@ -45,6 +45,7 @@ export default class InsightFacade implements IInsightFacade {
 			throw new InsightError("init failed");
 		}
 	}
+
 	public async addDataset(id: string, content: string, kind: InsightDatasetKind): Promise<string[]> {
 		try {
 			await this._initialization;

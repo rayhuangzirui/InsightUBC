@@ -7,9 +7,9 @@ import {
 	ORDER,
 	Query,
 	SCOMPARISON,
-} from "./QueryInterfaces";
-import {MCOMPARATOR, LOGIC, Sfield, Mfield} from "./ClausesEnum";
-import {parseQuery} from "./QueryParser";
+} from "../QueryParsers/QueryInterfaces";
+import {MCOMPARATOR, LOGIC, Sfield, Mfield} from "../QueryParsers/ClausesEnum";
+import {parseQuery} from "../QueryParsers/QueryParser";
 // import {ResultTooLargeError} from "./IInsightFacade";
 
 export default class QueryEngine {
@@ -182,6 +182,7 @@ export default class QueryEngine {
 		title: "_title",
 		uuid: "_uuid"
 	};
+
 	private sortDataInOrder(dataset: any[]): any[] {
 		const order = this.getOrder();
 		// console.log("order is " + JSON.stringify(order, null, 2));

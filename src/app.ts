@@ -44,8 +44,8 @@ async function main() {
 */
 	let rooms = fs.readFileSync("./resources/archives/campus.zip").toString("base64");
 	let zip = new JSZip();
-	 let indexContent;
-	 let textContent;
+	let indexContent;
+	let textContent;
 	zip.loadAsync(rooms, {base64: true}).then(function(contents) {
 		// 一旦ZIP文件已加载，我们可以从中提取index.htm文件的内容
 		indexContent = contents.file("index.htm");
