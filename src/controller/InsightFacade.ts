@@ -206,6 +206,7 @@ export default class InsightFacade implements IInsightFacade {
 
 			return Promise.resolve(result);
 		} catch (error) {
+			console.log("Error is " + error);
 			if (error instanceof InsightError) {
 				return Promise.reject(error);
 			}

@@ -1,10 +1,28 @@
-import {FILTER, Key, LOGICCOMPARISON, MCOMPARISON, Mkey, NEGATION, SCOMPARISON, Skey} from "./QueryInterfaces";
+import {
+	ANYKEY,
+	FILTER,
+	Key,
+	LOGICCOMPARISON,
+	MCOMPARISON,
+	Mkey,
+	NEGATION,
+	SCOMPARISON,
+	Skey
+} from "./QueryInterfaces";
 import {IS, LOGIC, MCOMPARATOR, Mfield, NOT, Sfield} from "./ClausesEnum";
 import {InsightError} from "../controller/IInsightFacade";
-import {IDValidator, inputStringValidator, isMkey, isSkey} from "./Validators";
+import {
+	IDValidator,
+	inputStringValidator,
+	isMkey,
+	isValidObject,
+	isSkey,
+	isValidApplyKey,
+	isValidArray
+} from "./Validators";
 
 export function parseFilter(filter: any): FILTER {
-	if (!filter) {
+	if (!isValidObject(filter)) {
 		return {};
 	}
 
@@ -32,7 +50,7 @@ export function parseLogicComparison(logicCom: any): LOGICCOMPARISON {
 
 	let filters = logicCom[logicComparator];
 
-	if (!filters || !Array.isArray(filters)) {
+	if (!isValidArray(filters)) {
 		throw new InsightError(logicComparator + " must be an array");
 	}
 
@@ -43,7 +61,7 @@ export function parseLogicComparison(logicCom: any): LOGICCOMPARISON {
 	}
 
 	for (let filter of filters) {
-		if (!filter) {
+		if (!isValidObject(filter)) {
 			throw new InsightError("AND must be an object");
 		}
 		let parsedFilter = parseFilter(filter);
@@ -164,7 +182,7 @@ export function parseNegation(negation: any): NEGATION {
 	let not = Object.keys(negation)[0];
 	let notValue = negation[not]; // filter
 
-	if (!notValue || typeof notValue !== "object") {
+	if (!isValidObject(notValue)) {
 		throw new InsightError(not + " has invalid key");
 	}
 	let filter = parseFilter(notValue);
@@ -182,7 +200,7 @@ export function parseKey(key: any): Key{
 		return parseMKey(key);
 	} else if (isSkey(key)) {
 		return parseSKey(key);
-	} else {
-		throw new InsightError("No appropriate key");
 	}
+
+	throw new InsightError("No appropriate key");
 }

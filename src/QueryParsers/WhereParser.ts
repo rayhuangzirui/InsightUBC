@@ -1,13 +1,14 @@
 import {WHERE} from "./QueryInterfaces";
 import {InsightError} from "../controller/IInsightFacade";
 import {parseFilter} from "./FilterParser";
+import {isEmptyArray, isValidObject} from "./Validators";
 
 export function parseWhere(where: any): WHERE {
-	if (!where) {
+	if (!isValidObject(where)) {
 		throw new InsightError("WHERE must be an object");
 	}
 
-	if (Object.keys(where).length === 0) {
+	if (isEmptyArray(Object.keys(where))) {
 		return {};
 	}
 	if (Object.keys(where).length > 1) {
