@@ -1,7 +1,20 @@
-import {COLUMNS, FILTER, Key, ORDER, Query} from "../QueryParsers/QueryInterfaces";
+import {APPLYRULE, COLUMNS, FILTER, Key, ORDER, Query, TRANSFORMATIONS} from "../QueryParsers/QueryInterfaces";
 import {parseQuery} from "../QueryParsers/QueryParser";
-import {filterHelper, selectColumnsHelper} from "./QueryEngineHelper";
-import {isValidObject, isValidApplyKey, isValidString, compareValues} from "../QueryParsers/Validators";
+import {
+	calculateValueByToken,
+	constructGroupKey,
+	fieldMap,
+	filterHelper,
+	selectColumnsHelper,
+} from "./QueryEngineHelper";
+import {
+	compareValues,
+	isKeyInApplyRules,
+	isKeyinGroupList,
+	isValidApplyKey,
+	isValidObject,
+} from "../QueryParsers/Validators";
+import {InsightError} from "./IInsightFacade";
 
 export default class QueryEngine {
 	public dataset: any[];
@@ -20,12 +33,18 @@ export default class QueryEngine {
 		return this.query.options.columns;
 	}
 
-	public getOrder(): ORDER{
+	public getOrder(): ORDER {
 		return this.query.options.order as ORDER;
+	}
+
+	public getTransformations(): TRANSFORMATIONS {
+		return this.query.transformations as TRANSFORMATIONS;
 	}
 
 	public runEngine(): any[] {
 		let results = this.filterData();
+		results = this.transformData(results);
+		// console.log("results after transform: " + JSON.stringify(results));
 		results = this.selectColumns(results);
 		results = this.sortDataInOrder(results);
 		return results;
@@ -44,6 +63,27 @@ export default class QueryEngine {
 
 	private selectColumns(dataset: any[]): any[] {
 		const columnKeys = this.getColumns().anykey_list;
+		if (this.getTransformations()) {
+			for (let key of columnKeys) {
+				if (typeof key === "string" && isValidApplyKey(key)) {
+					// column key is applykey
+					if (!isKeyInApplyRules(key, this.getTransformations().apply)) {
+						throw new InsightError("Column key " + JSON.stringify(key) + " not in apply key list");
+					}
+				} else {
+					key = key as Key;
+
+					if (!isKeyinGroupList(key, this.getTransformations().group.keys)) {
+						throw new InsightError(
+							"Column key " +
+								JSON.stringify(key) +
+								" not in group keys list" +
+								JSON.stringify(this.getTransformations().group.keys)
+						);
+					}
+				}
+			}
+		}
 
 		const mappedDataset = dataset.map((entry) => selectColumnsHelper(entry, columnKeys));
 
@@ -76,7 +116,6 @@ export default class QueryEngine {
 				for (let key of keys) {
 					if (typeof key === "string" && isValidApplyKey(key)) {
 						// order key is applykey
-
 						// TODO: implement applykey sorting
 					}
 					key = key as Key;
@@ -93,4 +132,51 @@ export default class QueryEngine {
 		return dataset;
 	}
 
+	private transformData(dataset: any[]): any[] {
+		const transformations = this.getTransformations();
+		if (!transformations) {
+			return dataset;
+		}
+
+		const groupedData = this.groupData(dataset);
+		return this.applyRules(groupedData);
+	}
+
+	private groupData(dataset: any[]): {[key: string]: any[]} {
+		const transformations = this.getTransformations();
+		if (!transformations) {
+			return {};
+		}
+		// Group entries by group keys
+		const groupedEntries: {[key: string]: any[]} = {};
+		for (const entry of dataset) {
+			let groupKey = constructGroupKey(entry, transformations.group.keys);
+
+			if (!groupedEntries[groupKey]) {
+				groupedEntries[groupKey] = [];
+			}
+			// Add entry to group
+			groupedEntries[groupKey].push(entry);
+		}
+		// Return array of groups, where each group is an array of entries
+		// console.log("groupedEntries: " + JSON.stringify(groupedEntries));
+		return groupedEntries;
+	}
+
+	private applyRules(groupedData: {[key: string]: any[]}): any[] {
+		const transformations = this.getTransformations();
+		if (!transformations) {
+			return Object.values(groupedData);
+		}
+		return Object.values(groupedData).map((group) => {
+			return transformations.apply.reduce(
+				(entry: any, applyRule: APPLYRULE) => {
+					const mappedKey = fieldMap[applyRule.key.field];
+					entry[applyRule.applykey] = calculateValueByToken(applyRule.applytoken, group, mappedKey);
+					return entry;
+				},
+				{...group[0]}
+			);
+		});
+	}
 }

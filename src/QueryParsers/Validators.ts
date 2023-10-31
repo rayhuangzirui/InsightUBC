@@ -1,4 +1,4 @@
-import {FILTER, Key} from "./QueryInterfaces";
+import {APPLYRULE, FILTER, Key} from "./QueryInterfaces";
 import {Mfield, Sfield} from "./ClausesEnum";
 
 export function IDValidator (id: string): boolean {
@@ -39,9 +39,24 @@ export function isSkey(key: any): boolean {
 	return sFields.some((field) => key.endsWith(`${field}`));
 }
 
-export function orderKeyValidator(key: any, key_list: any[]): boolean {
+export function isKeyinList(key: any, key_list: any[]): boolean {
 	return key_list.includes(key);
 }
+
+export function isKeyinGroupList(targetKey: Key, keyList: Key[]): boolean {
+	const targetStr = JSON.stringify(targetKey).trim();
+	return keyList.some((key) => JSON.stringify(key).trim() === targetStr);
+}
+
+export function isKeyInApplyRules(key: any, applyRules: APPLYRULE[]): boolean {
+	for (const rule of applyRules) {
+		if (rule.applykey === key) {
+			return true;
+		}
+	}
+	return false;
+}
+
 
 export function getIDsFromQuery(query: any): string[] {
 	let ids = new Set<string>();
@@ -103,11 +118,8 @@ export function isValidObject(obj: any): boolean {
 }
 
 export function isValidString(str: any): boolean {
-	return typeof str === "string" && str !== null;
-}
-
-export function isNumber(num: any): boolean {
-	return typeof num === "number";
+	// return typeof str === "string" && str !== null && str !== "";
+	return typeof str === "string";
 }
 
 export function isEmptyArray(arr: any): boolean {

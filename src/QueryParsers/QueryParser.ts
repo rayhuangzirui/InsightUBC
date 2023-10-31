@@ -1,5 +1,4 @@
 import {Query} from "./QueryInterfaces";
-import {WhereClause, OptionsClause, TransformationsClause} from "./ClausesEnum";
 import {InsightError} from "../controller/IInsightFacade";
 import {parseWhere} from "./WhereParser";
 import {parseOptions} from "./OptionsParser";
@@ -27,15 +26,11 @@ export function parseQuery(query: any): Query {
 		throw new InsightError("Missing WHERE or OPTIONS");
 	}
 
+	// Check for unexpected clauses in query
 	for (let key of queryKeys) {
 		if (!validClauses.includes(key)) {
-			throw new InsightError("Unexpected key in Query: " + key);
+			throw new InsightError("Unexpected clause in Query: " + key);
 		}
-	}
-
-	let body = Object.keys(parsedQuery)[0];
-	if (!Object.values(WhereClause).includes(body as WhereClause)) {
-		throw new InsightError("Invalid WHERE clause: " + body);
 	}
 
 	let result: Query = {

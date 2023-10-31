@@ -1,6 +1,8 @@
 import {ANYKEY, FILTER, Key, LOGICCOMPARISON, MCOMPARISON, SCOMPARISON} from "../QueryParsers/QueryInterfaces";
-import {LOGIC, MCOMPARATOR, Mfield, Sfield} from "../QueryParsers/ClausesEnum";
+import {APPLYTOKEN, LOGIC, MCOMPARATOR, Mfield, Sfield} from "../QueryParsers/ClausesEnum";
 import {isValidField} from "../QueryParsers/Validators";
+import {InsightError} from "./IInsightFacade";
+import {Decimal} from "decimal.js";
 
 export const fieldMap: {[key in Mfield | Sfield]: string} = {
 	avg: "_avg",
@@ -93,16 +95,55 @@ export function selectColumnsHelper(entry: any, keys: ANYKEY[]): any {
 
 		if (typeof key === "string") {
 			comKey = key;
+			projectedEntry[comKey] = entry[key];
 		} else {
 			comKey = `${key.idstring}_${key.field}`;
+			let mappedKey = fieldMap[key.field];
+			if (!isValidField(mappedKey, entry[mappedKey])) {
+				return {};
+			}
+			projectedEntry[comKey] = entry[mappedKey];
 		}
-		let mappedKey = (typeof key !== "string") ? fieldMap[key.field] : key;
-
-		if (!isValidField(mappedKey, entry[mappedKey])) {
-			return {};
-		}
-
-		projectedEntry[comKey] = entry[mappedKey];
 	}
 	return projectedEntry;
 }
+
+export function calculateValueByToken(token: APPLYTOKEN, group: any[], comKey: string): number {
+	let result: number;
+	let total: Decimal;
+	let avg: number;
+
+	switch(token) {
+		case "MAX":
+			result = Math.max(...group.map((entry) => entry[comKey]));
+			break;
+		case "MIN":
+			result = Math.min(...group.map((entry) => entry[comKey]));
+			break;
+		case "AVG":
+			total = new Decimal(0);
+			for(let entry of group) {
+				total = total.add(new Decimal(entry[comKey]));
+			}
+			avg = total.toNumber() / group.length;
+			result = Number(avg.toFixed(2));
+			break;
+		case "COUNT":
+			result = new Set(group.map((entry) => entry[comKey])).size;
+			break;
+		case "SUM":
+			total = group.reduce((acc, entry) => acc + entry[comKey], 0);
+			result = Number(total.toFixed(2));
+			break;
+		default:
+			throw new InsightError(`Unsupported token: ${token}`);
+	}
+
+	return result;
+}
+
+
+export function constructGroupKey(entry: any, keys: Key[]): string {
+	return keys.map((key) => entry[fieldMap[key.field]]).join("");
+}
+

@@ -11,6 +11,7 @@ export function parseWhere(where: any): WHERE {
 	if (isEmptyArray(Object.keys(where))) {
 		return {};
 	}
+
 	if (Object.keys(where).length > 1) {
 		throw new InsightError("WHERE should only have 1 key, has " + Object.keys(where).length);
 	}

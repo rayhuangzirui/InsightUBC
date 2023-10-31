@@ -22,7 +22,7 @@ import {
 } from "./Validators";
 
 export function parseFilter(filter: any): FILTER {
-	if (!isValidObject(filter)) {
+	if (!filter) {
 		return {};
 	}
 
@@ -48,6 +48,10 @@ export function parseFilter(filter: any): FILTER {
 export function parseLogicComparison(logicCom: any): LOGICCOMPARISON {
 	let logicComparator = Object.keys(logicCom)[0]; // AND, OR
 
+	if (!isValidObject(logicCom)) {
+		throw new InsightError(logicComparator + " must be an object");
+	}
+
 	let filters = logicCom[logicComparator];
 
 	if (!isValidArray(filters)) {
@@ -62,8 +66,9 @@ export function parseLogicComparison(logicCom: any): LOGICCOMPARISON {
 
 	for (let filter of filters) {
 		if (!isValidObject(filter)) {
-			throw new InsightError("AND must be an object");
+			throw new InsightError("Filter in " + logicComparator + " must be an object");
 		}
+
 		let parsedFilter = parseFilter(filter);
 		parsedFilters.push(parsedFilter);
 	}
@@ -76,8 +81,12 @@ export function parseLogicComparison(logicCom: any): LOGICCOMPARISON {
 export function parseMComparison(mCom: any): MCOMPARISON {
 	let mComparator = Object.keys(mCom)[0]; // LT, GT, EQ;
 
+	if (!isValidObject(mCom)) {
+		throw new InsightError(mComparator + " must be an object");
+	}
+
 	let mComValue = mCom[mComparator];
-	if (!mComValue || typeof mComValue !== "object") {
+	if (!isValidObject(mComValue)) {
 		throw new InsightError(mComparator + " has invalid key");
 	}
 
@@ -95,38 +104,12 @@ export function parseMComparison(mCom: any): MCOMPARISON {
 	};
 }
 
-export function parseMKey(mKey: any): Mkey {
-	if (typeof mKey !== "string") {
-		throw new InsightError("Expected mKey to be a string");
-	}
-
-	if (!mKey.includes("_")) {
-		throw new InsightError("Invalid mkey format");
-	}
-
-	let parts = mKey.split("_");
-	if (parts.length !== 2) {
-		throw new InsightError("Invalid mkey format: " + mKey);
-	}
-
-	let [idstring, mfield] = parts;
-	if (!IDValidator(idstring)) {
-		throw new InsightError("Invalid ID");
-	}
-
-	if (!Object.values(Mfield).includes(mfield as Mfield)) {
-		throw new InsightError("Invalid mfield value");
-	}
-
-	return {
-		idstring: idstring,
-		field: mfield as Mfield,
-	};
-}
-
 
 export function parseSComparison(sCom: any): SCOMPARISON {
 	let sComparator = Object.keys(sCom)[0]; // IS
+	if (!isValidObject(sCom)) {
+		throw new InsightError(sComparator + " must be an object");
+	}
 
 	let sComValue = sCom[sComparator];
 
@@ -150,6 +133,43 @@ export function parseSComparison(sCom: any): SCOMPARISON {
 		skey: parseSKey(skey),
 		inputstring:inputstring,
 	};
+}
+
+export function parseNegation(negation: any): NEGATION {
+	let not = Object.keys(negation)[0];
+	if (!isValidObject(negation)) {
+		throw new InsightError(not + " must be an object");
+	}
+
+	let notValue = negation[not]; // filter
+
+	if (!isValidObject(notValue)) {
+		throw new InsightError(not + " has invalid key");
+	}
+	let filter = parseFilter(notValue);
+	return {
+		NOT: not as NOT,
+		filter: filter,
+	};
+}
+
+export function parseKey(key: any): ANYKEY{
+	if (!key || typeof key !== "string") {
+		throw new InsightError("Invalid key");
+	}
+
+	if (!key.includes("_")) {
+		// key is applykey
+		return key;
+	}
+
+	if (isMkey(key)) {
+		return parseMKey(key);
+	} else if (isSkey(key)) {
+		return parseSKey(key);
+	}
+
+	throw new InsightError("No appropriate key");
 }
 
 export function parseSKey(sKey: any): Skey {
@@ -178,29 +198,32 @@ export function parseSKey(sKey: any): Skey {
 	};
 }
 
-export function parseNegation(negation: any): NEGATION {
-	let not = Object.keys(negation)[0];
-	let notValue = negation[not]; // filter
-
-	if (!isValidObject(notValue)) {
-		throw new InsightError(not + " has invalid key");
+export function parseMKey(mKey: any): Mkey {
+	if (typeof mKey !== "string") {
+		throw new InsightError("Expected mKey to be a string");
 	}
-	let filter = parseFilter(notValue);
+
+	if (!mKey.includes("_")) {
+		throw new InsightError("Invalid mkey format");
+	}
+
+	let parts = mKey.split("_");
+
+	if (parts.length !== 2) {
+		throw new InsightError("Invalid mkey format: " + mKey);
+	}
+
+	let [idstring, mfield] = parts;
+	if (!IDValidator(idstring)) {
+		throw new InsightError("Invalid ID");
+	}
+
+	if (!Object.values(Mfield).includes(mfield as Mfield)) {
+		throw new InsightError("Invalid mfield value");
+	}
+
 	return {
-		NOT: not as NOT,
-		filter: filter,
+		idstring: idstring,
+		field: mfield as Mfield,
 	};
-}
-
-export function parseKey(key: any): Key{
-	if (!key) {
-		throw new InsightError("Invalid key");
-	}
-	if (isMkey(key)) {
-		return parseMKey(key);
-	} else if (isSkey(key)) {
-		return parseSKey(key);
-	}
-
-	throw new InsightError("No appropriate key");
 }
