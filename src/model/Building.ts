@@ -1,3 +1,7 @@
+import {GeoService} from "../controller/GeoService";
+import {InsightError} from "../controller/IInsightFacade";
+import {GeoResponse} from "../controller/GeoResponse";
+
 export class Building {
 	private _lat: number;
 	private _lon: number;
@@ -5,6 +9,7 @@ export class Building {
 	private _shortname: string;
 	private _address: string;
 	private _href: string;
+	private _geoService: GeoService;
 
 	constructor(lat: number, lon: number, fullname: string, shortname: string, address: string, href: string) {
 		this._lat = lat;
@@ -15,53 +20,70 @@ export class Building {
 		this._href = href;
 	}
 
-	private get lat(): number {
+	public getLat(): number {
 		return this._lat;
 	}
 
-	private set lat(value: number) {
+	public setLat(value: number) {
 		this._lat = value;
 	}
 
-	private get lon(): number {
+	public getLon(): number {
 		return this._lon;
 	}
 
-	private set lon(value: number) {
+	public setLon(value: number) {
 		this._lon = value;
 	}
 
-	private get fullname(): string {
+	public getFullname(): string {
 		return this._fullname;
 	}
 
-	private set fullname(value: string) {
+	public setFullname(value: string) {
 		this._fullname = value;
 	}
 
-	private get shortname(): string {
+	public getShortname(): string {
 		return this._shortname;
 	}
 
-	private set shortname(value: string) {
+	public setShortname(value: string) {
 		this._shortname = value;
 	}
 
 
-	private get address(): string {
+	public getAddress(): string {
 		return this._address;
 	}
 
-	private set address(value: string) {
+	public setAddress(value: string) {
 		this._address = value;
 	}
 
-	private get href(): string {
+	public getHref(): string {
 		return this._href;
 	}
 
-	private set href(value: string) {
+	public setHref(value: string) {
 		this._href = value;
+	}
+
+	public getGeoService(): GeoService{
+		return this._geoService;
+	}
+
+	public setGeoService(geoService: GeoService){
+		this._geoService = geoService;
+	}
+
+	public  setLatLon(geoResponse: GeoResponse){
+		if (geoResponse.lon && geoResponse.lat && !geoResponse.error) {
+			this.setLat(geoResponse.lat);
+			this.setLon(geoResponse.lon);
+		} else {
+			throw new InsightError("error in geoResponse");
+		}
 	}
 }
 /* function jsonToBuilding(fieldNode: any): Building[] {
@@ -123,3 +145,5 @@ export class Building {
 		}
 	}
 }*/
+
+
