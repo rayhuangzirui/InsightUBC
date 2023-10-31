@@ -3,6 +3,9 @@ import JSZip from "jszip";
 import * as parse5 from "parse5";
 import {Building} from "../model/Building";
 import {tables} from "./InsightHelpers";
+import {GeoResponse} from "./GeoResponse";
+import {InsightError} from "./IInsightFacade";
+import {GeoService} from "./GeoService";
 
 export async function parseRoomData(content: string): Promise<Array<DefaultTreeAdapterMap["childNode"]>> {
 	let zip = new JSZip();
@@ -154,10 +157,6 @@ export function oneRowToBuilding(tr: DefaultTreeAdapterMap["childNode"]): Buildi
 	if (shortname && fullname && address && href) {
 		return new Building(lat, lon, fullname, shortname, address, href);
 	} else {
-		console.log(shortname);
-		console.log(fullname);
-		console.log(address);
-		console.log(href);
 		throw new Error("invalid building row");
 	}
 }
@@ -268,3 +267,20 @@ function findHtmlNode(node: any): ReturnType<typeof parse> | null {
 	}
 	return null;
 }
+
+export async function updateLatLon(buildings: Building[]) {
+	// a singleton geoService
+	let geoService = new GeoService();
+	const promises = buildings.map(async (building) => {
+		building.setGeoService(geoService);
+		try {
+			let geoResponse: GeoResponse = await geoService.fetchGeolocation(building.getAddress());
+			building.setLatLon(geoResponse);
+		} catch (err) {
+			throw new InsightError("error in getting geoResponse");
+		}
+	});
+	await Promise.all(promises);
+}
+
+
