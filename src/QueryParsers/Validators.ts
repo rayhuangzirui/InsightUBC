@@ -125,14 +125,3 @@ export function isValidString(str: any): boolean {
 export function isEmptyArray(arr: any): boolean {
 	return arr.length === 0;
 }
-
-export function compareValues(a: any, b: any): number {
-	if (typeof a === "string" && typeof b === "string") {
-		return a.localeCompare(b);
-	} else if (typeof a === "number" && typeof b === "number") {
-		return a - b;
-	}
-
-	return 0;
-}
-

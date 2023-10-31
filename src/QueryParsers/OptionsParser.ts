@@ -1,6 +1,5 @@
-import {ANYKEY, COLUMNS, Key, OPTIONS, ORDER} from "./QueryInterfaces";
+import {ANYKEY, COLUMNS, OPTIONS, ORDER} from "./QueryInterfaces";
 import {InsightError} from "../controller/IInsightFacade";
-import {ColumnsClause, OrderClause} from "./ClausesEnum";
 import {isValidObject, isValidArray, isValidString, isKeyinList} from "./Validators";
 import {parseKey} from "./FilterParser";
 

@@ -8,11 +8,9 @@ import {
 	selectColumnsHelper,
 } from "./QueryEngineHelper";
 import {
-	compareValues,
 	isKeyInApplyRules,
 	isKeyinGroupList,
 	isValidApplyKey,
-	isValidObject,
 } from "../QueryParsers/Validators";
 import {InsightError} from "./IInsightFacade";
 
@@ -44,7 +42,6 @@ export default class QueryEngine {
 	public runEngine(): any[] {
 		let results = this.filterData();
 		results = this.transformData(results);
-		// console.log("results after transform: " + JSON.stringify(results));
 		results = this.selectColumns(results);
 		results = this.sortDataInOrder(results);
 		return results;
@@ -93,34 +90,38 @@ export default class QueryEngine {
 	private sortDataInOrder(dataset: any[]): any[] {
 		const order = this.getOrder(); // parsed ORDER
 
-		if (!isValidObject(order)) {
+		if (!order) {
 			return dataset;
 		}
 
-		if ("anykey" in order) {
-			let key;
-			if (typeof order.anykey === "string" && isValidApplyKey(order.anykey)) {
-				// order key is applykey
-				key = order.anykey;
-				// TODO: implement applykey sorting
+		const compareByKey = (a: any, b: any, key: any): number => {
+			if (isValidApplyKey(key)) {
+				if (a[key] < b[key]) {
+					return -1;
+				}
+				if (a[key] > b[key]) {
+					return 1;
+				}
+				return 0;
+			} else {
+				let comKey = `${key.idstring}_${key.field}`;
+				if (a[comKey] < b[comKey]) {
+					return -1;
+				}
+				if (a[comKey] > b[comKey]) {
+					return 1;
+				}
+				return 0;
 			}
-			key = order.anykey as Key;
-			let comKey = `${key.idstring}_${key.field}`;
+		};
 
-			return dataset.sort((a, b) => compareValues(a[comKey], b[comKey]));
+		if ("anykey" in order) {
+			return dataset.sort((a, b) => compareByKey(a, b, order.anykey));
 		} else if ("dir" in order && "keys" in order) {
-			let dir = order.dir;
-			let keys = order.keys;
-
+			const {dir, keys} = order;
 			return dataset.sort((a, b) => {
 				for (let key of keys) {
-					if (typeof key === "string" && isValidApplyKey(key)) {
-						// order key is applykey
-						// TODO: implement applykey sorting
-					}
-					key = key as Key;
-					let comKey = `${key.idstring}_${key.field}`;
-					let comparison = compareValues(a[comKey], b[comKey]);
+					let comparison = compareByKey(a, b, key);
 					if (comparison !== 0) {
 						return dir === "UP" ? comparison : -comparison;
 					}
@@ -159,7 +160,6 @@ export default class QueryEngine {
 			groupedEntries[groupKey].push(entry);
 		}
 		// Return array of groups, where each group is an array of entries
-		// console.log("groupedEntries: " + JSON.stringify(groupedEntries));
 		return groupedEntries;
 	}
 
