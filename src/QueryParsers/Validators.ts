@@ -1,4 +1,4 @@
-import {FILTER, Key} from "./QueryInterfaces";
+import {APPLYRULE, FILTER, Key} from "./QueryInterfaces";
 import {Mfield, Sfield} from "./ClausesEnum";
 
 export function IDValidator (id: string): boolean {
@@ -39,9 +39,24 @@ export function isSkey(key: any): boolean {
 	return sFields.some((field) => key.endsWith(`${field}`));
 }
 
-export function orderKeyValidator(key: Key, key_list: Key[]): boolean {
+export function isKeyinList(key: any, key_list: any[]): boolean {
 	return key_list.includes(key);
 }
+
+export function isKeyinGroupList(targetKey: Key, keyList: Key[]): boolean {
+	const targetStr = JSON.stringify(targetKey).trim();
+	return keyList.some((key) => JSON.stringify(key).trim() === targetStr);
+}
+
+export function isKeyInApplyRules(key: any, applyRules: APPLYRULE[]): boolean {
+	for (const rule of applyRules) {
+		if (rule.applykey === key) {
+			return true;
+		}
+	}
+	return false;
+}
+
 
 export function getIDsFromQuery(query: any): string[] {
 	let ids = new Set<string>();
@@ -52,8 +67,8 @@ export function getIDsFromQuery(query: any): string[] {
 	}
 
 	// get IDs from the OPTIONS clause
-	if (query.options && query.options.columns && query.options.columns.key_list) {
-		for (const key of query.options.columns.key_list) {
+	if (query.options && query.options.columns && query.options.columns.anykey_list) {
+		for (const key of query.options.columns.anykey_list) {
 			if (key.idstring) {
 				ids.add(key.idstring);
 			}
@@ -77,3 +92,36 @@ function getIDsFromFilter(filter: FILTER, ids: Set<string>): void {
 	}
 }
 
+export function isValidField(mappedKey: string, value: any): boolean {
+	const stringFields = ["_dept", "_id", "_instructor", "_title", "_uuid",
+		"_fullname", "_shortname", "_number", "_name", "_address", "_type", "_furniture", "_href"];
+	const numberFields = ["_avg", "_pass", "_fail", "_audit", "_year", "_lat", "_lon", "_seats"];
+
+	if (stringFields.includes(mappedKey)) {
+		return typeof value === "string";
+	} else if (numberFields.includes(mappedKey)) {
+		return typeof value === "number";
+	}
+	return false;
+}
+
+export function isValidApplyKey(key: any): boolean {
+	return /^[^_]+$/g.test(key);
+}
+
+export function isValidArray(arr: any): boolean {
+	return Array.isArray(arr) && arr !== null;
+}
+
+export function isValidObject(obj: any): boolean {
+	return typeof obj === "object" && obj !== null;
+}
+
+export function isValidString(str: any): boolean {
+	// return typeof str === "string" && str !== null && str !== "";
+	return typeof str === "string";
+}
+
+export function isEmptyArray(arr: any): boolean {
+	return arr.length === 0;
+}
