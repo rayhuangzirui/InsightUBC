@@ -1,16 +1,40 @@
 export class Room {
-	private _room_number: string;
-	private _room_name: string;
-	private _seats: number;
-	private _type: string;
-	private _furniture: string;
+	public _room_number: string;
+	public _room_name: string;
+	public _seats: number;
+	public _type: string;
+	public _furniture: string;
+	public _lat?: number;
+	public _lon?: number;
+	public _fullname?: string;
+	public _shortname?: string;
+	public _address?: string;
+	public _href?: string;
 
-	constructor(room_number: string, room_name: string, seats: number, type: string, furniture: string) {
+	constructor(
+		room_number: string,
+		room_name: string,
+		seats: number,
+		type: string,
+		furniture: string,
+		lat?: number,
+		lon?: number,
+		fullname?: string,
+		shortname?: string,
+		address?: string,
+		href?: string
+	) {
 		this._room_number = room_number;
 		this._room_name = room_name;
 		this._seats = seats;
 		this._type = type;
 		this._furniture = furniture;
+		this._lat = lat;
+		this._lon = lon;
+		this._fullname = fullname;
+		this._shortname = shortname;
+		this._address = address;
+		this._href = href;
 	}
 
 	public getRoomNumber(): string {
