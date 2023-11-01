@@ -19,7 +19,6 @@ import * as rooms from "./RoomsManager";
 import {Building} from "../model/Building";
 import {parseQuery} from "../QueryParsers/QueryParser";
 import {getIDsFromQuery} from "../QueryParsers/Validators";
-
 /**
  * This is the main programmatic entry point for the project.
  * Method documentation is in IInsightFacade
