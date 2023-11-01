@@ -6,34 +6,25 @@ import {tables} from "./InsightHelpers";
 import {GeoResponse} from "./GeoResponse";
 import {InsightError} from "./IInsightFacade";
 import {GeoService} from "./GeoService";
+// mport {Template} from "parse5/dist/tree-adapters/default";
 
-export async function parseRoomData(content: string): Promise<Array<DefaultTreeAdapterMap["childNode"]>> {
+export async function parseBuildingData(content: string): Promise<Array<DefaultTreeAdapterMap["childNode"]>> {
 	let zip = new JSZip();
-	let indexContent;
-	let textContent;
-	await zip.loadAsync(content, {base64: true}).then(async function(contents) {
-		// 返回代表index.html文件对象
-		indexContent = contents.file("index.htm");
-		if (indexContent) {
-			// text string; content of index.html
-			textContent = await indexContent.async("text");
-			if (textContent) {
-				// return a document object, this object is similar to the DOM tree
-				return parse5.parse(textContent).childNodes;
-			}
-		} else {
-			throw new Error("no index.htm in zip");
-		}
-	});
-	if (textContent) {
 
-		return parse5.parse(textContent).childNodes;
-	} else {
-		throw new Error("Failed to parse the content.");
+	await zip.loadAsync(content, {base64: true});
+
+	let indexContent = zip.file("index.htm");
+	if (!indexContent) {
+		throw new InsightError("no index.htm in zip");
 	}
+
+	let textContent = await indexContent.async("text");
+	if (!textContent) {
+		throw new Error("Failed to retrieve the content from index.htm.");
+	}
+	return parse5.parse(textContent).childNodes;
 }
 
-// find the building table
 export function findBuildingTables(
 	nodes: Array<DefaultTreeAdapterMap["childNode"]>
 ): DefaultTreeAdapterMap["childNode"] | null {
@@ -68,8 +59,9 @@ export function findTbody(table: DefaultTreeAdapterMap["childNode"]): DefaultTre
 	}
 	return null;
 }
-// eslint-disable-next-line max-len
-export function findCadidateBuildingRows(tbody: DefaultTreeAdapterMap["childNode"]): Array<DefaultTreeAdapterMap["childNode"]> {
+
+export function findCadidateBuildingRows(tbody: DefaultTreeAdapterMap["childNode"]):
+	Array<DefaultTreeAdapterMap["childNode"]> {
 	let candidateRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
 	if ("childNodes" in tbody) {
 		for (let child of tbody.childNodes) {
@@ -82,8 +74,9 @@ export function findCadidateBuildingRows(tbody: DefaultTreeAdapterMap["childNode
 	}
 	return candidateRows;
 }
-// eslint-disable-next-line max-len
-export function findValidBuildingRows(candidateRows: Array<DefaultTreeAdapterMap["childNode"]>): Array<DefaultTreeAdapterMap["childNode"]> {
+
+export function findValidBuildingRows(candidateRows: Array<DefaultTreeAdapterMap["childNode"]>):
+	Array<DefaultTreeAdapterMap["childNode"]> {
 	let validRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
 	for (let row of candidateRows) {
 		if (isValidTableOrRow(row)) {
@@ -93,7 +86,43 @@ export function findValidBuildingRows(candidateRows: Array<DefaultTreeAdapterMap
 	return validRows;
 }
 
-// eslint-disable-next-line max-lines-per-function
+function setFullNameHref(
+	attrs: parse5.Token.Attribute,
+	td: DefaultTreeAdapterMap["childNode"]
+/*		| Element
+		| Template
+		| (Element & {childNodes: unknown})
+		| (Template & {
+				childNodes: unknown;
+		  })*/,
+	href: string | null,
+	fullname: string | null
+) {
+	if (attrs.name === "class" && attrs.value === "views-field views-field-title") {
+		if ("childNodes" in td) {
+			for (const child of td.childNodes) {
+				if (child.nodeName === "a") {
+					if ("attrs" in child) {
+						for (const attr of child.attrs) {
+							if (attr.name === "href") {
+								href = attr.value;
+							}
+						}
+					}
+					for (const subChild of child.childNodes) {
+						if (subChild.nodeName === "#text") {
+							if ("value" in subChild) {
+								fullname = subChild.value.trim();
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return {href, fullname};
+}
+
 export function oneRowToBuilding(tr: DefaultTreeAdapterMap["childNode"]): Building{
 	let lat = 0;
 	let lon = 0;
@@ -105,29 +134,9 @@ export function oneRowToBuilding(tr: DefaultTreeAdapterMap["childNode"]): Buildi
 		for (let td of tr.childNodes) {
 			if ("attrs" in td) {
 				for (let attrs of td.attrs) {
-					if (attrs.name === "class" && attrs.value === "views-field views-field-title") {
-						if ("childNodes" in td) {
-							for (const child of td.childNodes) {
-								if (child.nodeName === "a") {
-									if ("attrs" in child) {
-										for (const attr of child.attrs) {
-											if (attr.name === "href") {
-												href = attr.value;
-											}
-										}
-									}
-									for (const subChild of child.childNodes) {
-										if (subChild.nodeName === "#text") {
-											if ("value" in subChild) {
-												fullname = subChild.value.trim();
-											}
-										}
-									}
-								}
-								// console.log(child.nodeName);
-							}
-						}
-					}
+					const fullNameHref = setFullNameHref(attrs, td, href, fullname);
+					href = fullNameHref.href;
+					fullname = fullNameHref.fullname;
 					if (attrs.name === "class" && attrs.value === "views-field views-field-field-building-address") {
 						if ("childNodes" in td) {
 							for (const child of td.childNodes) {
@@ -170,7 +179,6 @@ export function jsonToBuilding(trs: Array<DefaultTreeAdapterMap["childNode"]>): 
 }
 
 export function isValidTableOrRow(child: DefaultTreeAdapterMap["childNode"]): boolean {
-	// return hasFullName(element) && hasShortName(element) && hasAddress(element) && hasHref(element);
 	return hasShortName(child) && hasFullName(child) && hasAddress(child) && hasHref(child);
 }
 
@@ -193,7 +201,6 @@ export function hasShortName(child: DefaultTreeAdapterMap["childNode"]): boolean
 
 	return false;
 }
-
 
 export function hasFullName(child: DefaultTreeAdapterMap["childNode"]): boolean {
 	if ("attrs" in child) {
@@ -253,26 +260,12 @@ export function hasHref(child: DefaultTreeAdapterMap["childNode"]): boolean {
 	}
 	return false;
 }
-function findHtmlNode(node: any): ReturnType<typeof parse> | null {
-	if (node.tagName === "html") {
-		return node;
-	}
-	if (node.childNodes) {
-		for (let child of node.childNodes) {
-			const result = findHtmlNode(child);
-			if (result) {
-				return result;
-			}
-		}
-	}
-	return null;
-}
 
 export async function updateLatLon(buildings: Building[]) {
 	// a singleton geoService
 	let geoService = new GeoService();
 	const promises = buildings.map(async (building) => {
-		building.setGeoService(geoService);
+		// building.setGeoService(geoService);
 		try {
 			let geoResponse: GeoResponse = await geoService.fetchGeolocation(building.getAddress());
 			building.setLatLon(geoResponse);
