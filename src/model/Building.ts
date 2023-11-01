@@ -1,4 +1,3 @@
-import {GeoService} from "../controller/GeoService";
 import {InsightError} from "../controller/IInsightFacade";
 import {GeoResponse} from "../controller/GeoResponse";
 import {Room} from "./Room";
@@ -81,15 +80,6 @@ export class Building {
 		this._rooms.push(room);
 	}
 
-
-	/*	public getGeoService(): GeoService{
-		return this._geoService;
-	}
-
-	public setGeoService(geoService: GeoService){
-		this._geoService = geoService;
-	}*/
-
 	public setLatLon(geoResponse: GeoResponse) {
 		if (geoResponse.lon && geoResponse.lat && !geoResponse.error) {
 			this.setLat(geoResponse.lat);
@@ -111,64 +101,5 @@ export class Building {
 		};
 	}
 }
-/* function jsonToBuilding(fieldNode: any): Building[] {
-	let buildingList: Building[] = [];
-	if (fieldNode.childNodes) {
-		for (let child of fieldNode.childNodes || []) {
-			if (child.tagName === "tr") {
-				for (let td of child.childNodes || []) {
-
-					// short name
-					let shortnameAttr;
-					if (td.attrs) {
-						const tmpShortName = td.attrs.find((attr: any) =>
-							attr.name === "class" &&
-							attr.value.includes("views-field") &&
-							attr.value.includes("views-field-field-building-code")
-						);
-						if (tmpShortName) {
-							shortnameAttr = tmpShortName;
-						}
-					}
-					if (!shortnameAttr) {
-						throw new Error("No shortname attribute found");
-					}
-					let shortname: string = shortnameAttr.value;
-
-					// address
-					let address: string = td.attrs.find((attr: any) =>
-						attr.name === "class" && attr.value.includes("views-field")
-						&& attr.value.includes("views-field-field-building-address")).value;
-// eslint-disable-next-line max-lines
-
-					// todo: get real lat and lon
-					let lat = 0;
-					let lon = 0;
-
-					// full name and href
-					let fullname: string;
-					let href: string = "";
-
-					const titleAttr = td.attrs.find((attr: any) =>
-						attr.name === "class" && attr.value.includes("views-field-title") &&
-						attr.value.includes("views-field")
-					);
-
-					if (!titleAttr) {
-						throw new Error("No title field td found");
-					}
-					fullname = titleAttr.value;
-					if (!td.childNodes) {
-						throw new Error("No href field a found");
-					}
-					href = "";
-					let building = new Building(lat, lon, fullname, shortname, address, href);
-					buildingList.push(building);
-				}
-				return buildingList;
-			}
-		}
-	}
-}*/
 
 
