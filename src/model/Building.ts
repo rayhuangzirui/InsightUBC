@@ -1,6 +1,7 @@
 import {GeoService} from "../controller/GeoService";
 import {InsightError} from "../controller/IInsightFacade";
 import {GeoResponse} from "../controller/GeoResponse";
+import {Room} from "./Room";
 
 export class Building {
 	private _lat: number;
@@ -9,7 +10,7 @@ export class Building {
 	private _shortname: string;
 	private _address: string;
 	private _href: string;
-	private _geoService: GeoService;
+	private _rooms: Room[] = [];
 
 	constructor(lat: number, lon: number, fullname: string, shortname: string, address: string, href: string) {
 		this._lat = lat;
@@ -52,7 +53,6 @@ export class Building {
 		this._shortname = value;
 	}
 
-
 	public getAddress(): string {
 		return this._address;
 	}
@@ -69,21 +69,46 @@ export class Building {
 		this._href = value;
 	}
 
-	public getGeoService(): GeoService{
+	public getRooms(): Room[] {
+		return this._rooms;
+	}
+
+	public setRooms(value: Room[]) {
+		this._rooms = value;
+	}
+
+	public addRoom(room: Room) {
+		this._rooms.push(room);
+	}
+
+
+	/*	public getGeoService(): GeoService{
 		return this._geoService;
 	}
 
 	public setGeoService(geoService: GeoService){
 		this._geoService = geoService;
-	}
+	}*/
 
-	public  setLatLon(geoResponse: GeoResponse){
+	public setLatLon(geoResponse: GeoResponse) {
 		if (geoResponse.lon && geoResponse.lat && !geoResponse.error) {
 			this.setLat(geoResponse.lat);
 			this.setLon(geoResponse.lon);
 		} else {
 			throw new InsightError("error in geoResponse");
 		}
+	}
+
+	public toPlainObject(): object {
+		return {
+			_lat: this._lat,
+			_lon: this._lon,
+			_fullname: this._fullname,
+			_shortname: this._shortname,
+			_address: this._address,
+			_href: this._href,
+			_rooms: this._rooms.map((room) => room.toPlainObject())
+		};
 	}
 }
 /* function jsonToBuilding(fieldNode: any): Building[] {

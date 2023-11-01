@@ -1,17 +1,19 @@
-import {InsightDatasetKind, InsightError} from "./IInsightFacade";
+import {InsightDataset, InsightDatasetKind, InsightError} from "./IInsightFacade";
 import {Section} from "../model/Section";
 import path from "path";
 import fs from "fs";
 import JSZip from "jszip";
 import {parse,DefaultTreeAdapterMap} from "parse5";
 import * as parse5 from "parse5";
-import {Building} from "../model/Building";
+import * as fs_extra from "fs-extra";
+import {parseBuildingData, updateLatLon} from "./BuildingManager";
+import * as building from "./BuildingManager";
+import * as rooms from "./RoomsManager";
 
 export let tables: any[] = [];
 export function extractResultValues(data: any[]): any[] {
 	try {
 		const results: any[] = [];
-
 		data.forEach((item) => {
 			for (const key in item) {
 				const innerObject = JSON.parse(item[key]);
@@ -59,7 +61,7 @@ export async function isValidZip(loadedContent: JSZip): Promise<boolean> {
 		const promise = (async () => {
 			if (zipEntry.dir) {
 				totalDirectories++;
-				if (totalDirectories > 1 || relativePath !== "courses/") {
+				if (totalDirectories > 1 || (relativePath !== "courses/" && relativePath !== "campus/")) {
 					isValid = false;
 				}
 			} else if (!relativePath.startsWith("courses/")) {
@@ -86,6 +88,9 @@ export async function isValidZip(loadedContent: JSZip): Promise<boolean> {
 }
 
 export function isIdKindValid(id: string, kind: InsightDatasetKind): boolean {
+	if (kind !== InsightDatasetKind.Rooms && kind !== InsightDatasetKind.Sections) {
+		return false;
+	}
 	if (id === null || id === undefined) {
 		return false;
 	}
@@ -95,13 +100,10 @@ export function isIdKindValid(id: string, kind: InsightDatasetKind): boolean {
 	if (!/^[^_]+$/.test(id)) {
 		return false;
 	}
-	if (kind === InsightDatasetKind.Rooms) {
-		return false;
-	}
 	return true;
 }
 
-export function countRowNum(parsedData: any[]): number {
+export function countRowNumSections(parsedData: any[]): number {
 	let rowNumber = 0;
 
 	for (let data of parsedData) {
@@ -117,6 +119,14 @@ export function countRowNum(parsedData: any[]): number {
 				throw new InsightError("error parsing section data in countRowNum");
 			}
 		}
+	}
+	return rowNumber;
+}
+
+export function countRowNumBuildings  (parsedData: any[]): number {
+	let rowNumber = 0;
+	for (let data of parsedData){
+		rowNumber += data._rooms.length;
 	}
 	return rowNumber;
 }
@@ -141,11 +151,52 @@ export async function parseRoomData(content: string): Promise<Array<DefaultTreeA
 		}
 	});
 	if (textContent) {
-
 		return parse5.parse(textContent).childNodes;
 	} else {
 		throw new Error("Failed to parse the content.");
 	}
 }
 
+/*
+export async function loadAddedDatasetFromDisk(): Promise<void> {
+	try {
+		// to ensure the data folder exists
+		await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
+		const files = await fs_extra.promises.readdir(path.join(__dirname, "..", "..", "data"));
+		const filePromises = files.map(async (file) => {
+			if (file === ".gitkeep") {
+				return;
+			}
+			const filePath = path.join(__dirname, "..", "..", "data", file);
+			const stat = await fs_extra.stat(filePath);
+			if (stat.isFile()) {
+				const fileContent = await fs_extra.readFile(filePath, "utf8");
+				const parsedData = (JSON.parse(fileContent) as any[]);
+				if (file.startsWith("Sections")) {
+					this._currentAddedInsightDataset.push({
+						id: file.split(".")[0].split("_")[1],
+						kind: InsightDatasetKind.Sections,
+						numRows: countRowNumSections(parsedData)
+					});
+				} else if (file.startsWith("Buildings")) {
+					this._currentAddedInsightDataset.push({
+						// let pre_id = file.split("_")[1];
+						id: file.split(".")[0].split("_")[1],
+						kind: InsightDatasetKind.Rooms,
+						numRows: countRowNumBuildings(parsedData),
+					});
+				}
+			}
+		});
 
+		await Promise.all(filePromises);
+	} catch (e) {
+		throw new InsightError("error loading dataset from disk");
+	}
+}
+
+export async function ensureDirectoryExists(dataFolderPath: string) {
+	await this._initialization;
+	await fs_extra.ensureDir(dataFolderPath);
+}
+*/
