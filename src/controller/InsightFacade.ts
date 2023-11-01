@@ -11,7 +11,7 @@ import path from "path";
 import * as fs from "fs";
 import * as fs_extra from "fs-extra";
 import QueryEngine from "./QueryEngine";
-import {jsonToSection, isValidZip, isIdKindValid, countRowNumSections, countRowNumBuildings,extractResultValues} from "./InsightHelpers";
+import {jsonToSection, isValidZip, isIdKindValid, countRowNumSections, countRowNumBuildings} from "./InsightHelpers";
 import {parseBuildingData, updateLatLon} from "./BuildingManager";
 import * as building from "./BuildingManager";
 import {DefaultTreeAdapterMap} from "parse5";
