@@ -9,6 +9,7 @@ import * as fs_extra from "fs-extra";
 import {parseBuildingData, updateLatLon} from "./BuildingManager";
 import * as building from "./BuildingManager";
 import * as rooms from "./RoomsManager";
+import {Building} from "../model/Building";
 
 export let tables: any[] = [];
 export function extractResultValues(data: any[]): any[] {
@@ -30,7 +31,7 @@ export function extractResultValues(data: any[]): any[] {
 
 export function jsonToSection(datasetId: string): Section[] {
 	try {
-		const dataFilePath = path.join(__dirname, "..", "..", "data", datasetId + ".json");
+		const dataFilePath = path.join(__dirname, "..", "..", "data", "Sections" + "_" + datasetId + ".json");
 		// after readfilesync, it's a json string, need to parse it to json object
 		let datafileString = fs.readFileSync(dataFilePath, "utf8");
 		// the data is of nested json format,after parse, it's a ts object array
@@ -50,6 +51,12 @@ export function jsonToSection(datasetId: string): Section[] {
 	} catch (e) {
 		throw new InsightError("error parsing section data");
 	}
+}
+
+export function jsonToBuildings(datasetId: string): Building[] {
+	const dataFilePath = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + datasetId + ".json");
+	let datafileString: string = fs.readFileSync(dataFilePath, "utf8");
+	return  JSON.parse(datafileString);
 }
 
 export async function isValidZip(loadedContent: JSZip): Promise<boolean> {

@@ -43,6 +43,7 @@ export default class QueryEngine {
 		let results = this.filterData();
 		results = this.transformData(results);
 		results = this.selectColumns(results);
+		// console.log("room: " + JSON.stringify(results));
 		results = this.sortDataInOrder(results);
 		return results;
 	}

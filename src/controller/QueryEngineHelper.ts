@@ -16,19 +16,19 @@ export const fieldMap: {[key in Mfield | Sfield]: string} = {
 	title: "_title",
 	uuid: "_uuid",
 
-	// Rooms dataset Mfileds
+	// Rooms dataset Mfileds (numbers)
 	lat: "_lat",
 	lon: "_lon",
-	seats: "_seats",
+	seats: "_seats", // In rooms
 
-	// Rooms dataset Sfields
+	// Rooms dataset Sfields (strings)
 	fullname: "_fullname",
 	shortname: "_shortname",
-	number: "_number",
-	name: "_name",
+	number: "_room_number", // In rooms
+	name: "_room_name", // In rooms
 	address: "_address",
-	type: "_type",
-	furniture: "_furniture",
+	type: "_type", // In rooms
+	furniture: "_furniture", // In rooms
 	href: "_href",
 };
 
@@ -56,36 +56,92 @@ function logicComHelper(entry: any, logicCom: LOGICCOMPARISON): boolean {
 		return true;
 	}
 }
-
 function mComHelper(entry: any, mCom: MCOMPARISON): boolean {
 	const mappedField = fieldMap[mCom.mkey.field];
-	const mfieldEntry = entry[mappedField];
-	switch (mCom.mcomparator) {
+	// if (mappedField === "_seats") {
+	// 	// Iterate over each room and check if any room satisfies the condition
+	// 	for (let room of entry["_rooms"]) {
+	// 		if (compare(room["_seats"], mCom.mcomparator, mCom.num)) {
+	// 			return true;
+	// 		}
+	// 	}
+	// 	return false; // If no room satisfies the condition
+	// }
+
+	// For other fields, use the original logic
+	let mfieldEntry = entry[mappedField];
+	return compare(mfieldEntry, mCom.mcomparator, mCom.num);
+}
+
+function compare(value: number, comparator: MCOMPARATOR, num: number): boolean {
+	switch (comparator) {
 		case MCOMPARATOR.LT:
-			return mfieldEntry < mCom.num;
+			return value < num;
 		case MCOMPARATOR.EQ:
-			return mfieldEntry === mCom.num;
+			return value === num;
 		case MCOMPARATOR.GT:
-			return mfieldEntry > mCom.num;
+			return value > num;
 		default:
 			return true;
 	}
 }
 
+// function sComHelper(entry: any, sCom: SCOMPARISON): boolean {
+// 	const mappedField = fieldMap[sCom.skey.field];
+// 	let sfieldEntry;
+// 	if (["_room_name", "_room_number", "_type", "_furniture"].includes(mappedField)) {
+// 		for (let room of entry["_rooms"]) {
+// 			sfieldEntry = room[mappedField];
+// 			if (sfieldEntry === sCom.inputstring) {
+// 				return true;
+// 			}
+// 		}
+// 		return false;
+// 	}
+// 	sfieldEntry = entry[mappedField];
+//
+// 	if (sCom.inputstring.startsWith("*") && sCom.inputstring.endsWith("*")) {
+// 		const string = sCom.inputstring.slice(1, -1);
+// 		return sfieldEntry.includes(string);
+// 	} else if (sCom.inputstring.startsWith("*")) {
+// 		return sfieldEntry.endsWith(sCom.inputstring.slice(1));
+// 	} else if (sCom.inputstring.endsWith("*")) {
+// 		return sfieldEntry.startsWith(sCom.inputstring.slice(0, -1));
+// 	}
+//
+// 	return sfieldEntry === sCom.inputstring;
+// }
+
 function sComHelper(entry: any, sCom: SCOMPARISON): boolean {
 	const mappedField = fieldMap[sCom.skey.field];
-	const sfieldEntry = entry[mappedField];
+	let sfieldEntry = entry[mappedField];
 
-	if (sCom.inputstring.startsWith("*") && sCom.inputstring.endsWith("*")) {
-		const string = sCom.inputstring.slice(1, -1);
-		return sfieldEntry.includes(string);
-	} else if (sCom.inputstring.startsWith("*")) {
-		return sfieldEntry.endsWith(sCom.inputstring.slice(1));
-	} else if (sCom.inputstring.endsWith("*")) {
-		return sfieldEntry.startsWith(sCom.inputstring.slice(0, -1));
+	// Check if the mappedField is one of the room-specific fields
+	// if (["_room_name", "_room_number", "_type", "_furniture"].includes(mappedField)) {
+	// 	sfieldEntry = entry["_rooms"].map((room: any) => room[mappedField]);
+	// } else {
+	// 	sfieldEntry = entry[mappedField];
+	// }
+
+	// if (Array.isArray(sfieldEntry)) {
+	// 	// For array values, we'll check if any room entry matches the string pattern
+	// 	return sfieldEntry.some((value: string) => isStringMatch(value, sCom.inputstring));
+	// }
+
+	return isStringMatch(sfieldEntry, sCom.inputstring);
+}
+
+function isStringMatch(fieldValue: string, pattern: string): boolean {
+	if (pattern.startsWith("*") && pattern.endsWith("*")) {
+		const string = pattern.slice(1, -1);
+		return fieldValue.includes(string);
+	} else if (pattern.startsWith("*")) {
+		return fieldValue.endsWith(pattern.slice(1));
+	} else if (pattern.endsWith("*")) {
+		return fieldValue.startsWith(pattern.slice(0, -1));
 	}
 
-	return sfieldEntry === sCom.inputstring;
+	return fieldValue === pattern;
 }
 
 export function selectColumnsHelper(entry: any, keys: ANYKEY[]): any {
@@ -99,6 +155,16 @@ export function selectColumnsHelper(entry: any, keys: ANYKEY[]): any {
 		} else {
 			comKey = `${key.idstring}_${key.field}`;
 			let mappedKey = fieldMap[key.field];
+			// if (["_room_name", "_room_number", "_type", "_furniture", "_seats"].includes(mappedKey)) {
+			// 	// If the field is in the "_rooms" array, get its values
+			// 	projectedEntry[comKey] = entry["_rooms"].map((room: any) => room[mappedKey]);
+			// } else {
+			// 	// If not, maintain original logic
+			// 	if (!isValidField(mappedKey, entry[mappedKey])) {
+			// 		return {};
+			// 	}
+			// 	projectedEntry[comKey] = entry[mappedKey];
+			// }
 			if (!isValidField(mappedKey, entry[mappedKey])) {
 				return {};
 			}

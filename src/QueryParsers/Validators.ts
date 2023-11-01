@@ -1,5 +1,7 @@
 import {APPLYRULE, FILTER, Key} from "./QueryInterfaces";
 import {Mfield, Sfield} from "./ClausesEnum";
+import {InsightDatasetKind, InsightError} from "../controller/IInsightFacade";
+import {jsonToBuildings, jsonToSection} from "../controller/InsightHelpers";
 
 export function IDValidator (id: string): boolean {
 	if (id.includes("_")) {
@@ -75,6 +77,22 @@ export function getIDsFromQuery(query: any): string[] {
 		}
 	}
 
+	// Get IDs from the TRANSFORMATIONS clause (GROUP)
+	if (query.transformations && query.transformations.group) {
+		for (const key of query.transformations.group.keys) {
+			ids.add(key.idstring);
+		}
+	}
+
+	// Get IDs from the TRANSFORMATIONS clause (APPLY)
+	if (query.transformations && query.transformations.apply) {
+		if (Array.isArray(query.transformations.apply) && query.transformations.apply.length > 0) {
+			for (const applyRule of query.transformations.apply) {
+				ids.add(applyRule.key.idstring);
+			}
+		}
+	}
+
 	return [...ids];
 }
 
@@ -124,4 +142,15 @@ export function isValidString(str: any): boolean {
 
 export function isEmptyArray(arr: any): boolean {
 	return arr.length === 0;
+}
+
+export function getDatasetFromKind(kind: InsightDatasetKind, id: string): any {
+	switch (kind) {
+		case InsightDatasetKind.Sections:
+			return jsonToSection(id);
+		case InsightDatasetKind.Rooms:
+			return jsonToBuildings(id);
+		default:
+			throw new InsightError("No dataset found with the given ID and kind");
+	}
 }
