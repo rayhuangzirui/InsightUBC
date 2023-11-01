@@ -6,9 +6,12 @@ import JSZip from "jszip";
 import {parse,DefaultTreeAdapterMap} from "parse5";
 import * as parse5 from "parse5";
 import * as fs_extra from "fs-extra";
+import fs_promise from "fs/promises";
 import {parseBuildingData, updateLatLon} from "./BuildingManager";
 import * as building from "./BuildingManager";
 import * as rooms from "./RoomsManager";
+import {Building} from "../model/Building";
+import {Room} from "../model/Room";
 
 export let tables: any[] = [];
 export function extractResultValues(data: any[]): any[] {
@@ -28,29 +31,66 @@ export function extractResultValues(data: any[]): any[] {
 	}
 }
 
-export function jsonToSection(datasetId: string): Section[] {
+// todo：change the query part
+export async function jsonToSection(datasetId: string): Promise<Section[]> {
 	try {
-		const dataFilePath = path.join(__dirname, "..", "..", "data", datasetId + ".json");
+		const dataFilePath = path.join(__dirname, "..", "..", "data", "Sections" + "_" + datasetId + ".json");
 		// after readfilesync, it's a json string, need to parse it to json object
-		let datafileString = fs.readFileSync(dataFilePath, "utf8");
+		// let datafileString = fs.readFileSync(dataFilePath, "utf8");
 		// the data is of nested json format,after parse, it's a ts object array
 		// the array contains ts objects;  each object element contains a json string(the real data fields for a section)
-		let parsedObjectArray = JSON.parse(datafileString);
-		// return all the section data in the file as an Object[]
-		let sectionRawData = extractResultValues(parsedObjectArray);
-		let sectionArray: Section[] = [];
-		for (let section of sectionRawData) {
-			let testsection = new Section(section.Subject, section.Course,
-				section.Avg, section.Professor, section.Title,
-				section.Pass, section.Fail, section.Audit,
-				String(section.id), Number(section.Year));
-			sectionArray.push(testsection);
+		try {
+			let datafileString: string = await fs_promise.readFile(dataFilePath, "utf8");
+			let parsedObjectArray = JSON.parse(datafileString);
+			// return all the section data in the file as an Object[]
+			let sectionRawData = extractResultValues(parsedObjectArray);
+			let sectionArray: Section[] = [];
+			for (let section of sectionRawData) {
+				let testsection = new Section(section.Subject, section.Course,
+					section.Avg, section.Professor, section.Title,
+					section.Pass, section.Fail, section.Audit,
+					String(section.id), Number(section.Year));
+				sectionArray.push(testsection);
+			}
+			return sectionArray;
+		} catch (e) {
+			throw new InsightError("error reading section data");
 		}
-		return sectionArray;
 	} catch (e) {
 		throw new InsightError("error parsing section data");
 	}
 }
+
+export function jsonToRooms(datasetId: string): Room[] {
+	const dataFilePath = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + datasetId + ".json");
+	let datafileString: string = fs.readFileSync(dataFilePath, "utf8");
+	let buildings: Building[] =  JSON.parse(datafileString);
+	return getAllRooms(buildings);
+}
+
+export function getAllRooms(buildings: Building[]): Room[] {
+	let allRooms: Room[] = [];
+	for (const b of buildings) {
+		const rs = b._rooms;
+		for (const r of rs) {
+			const newRoom = new Room(
+				r._room_number,
+				r._room_name,
+				r._seats,
+				r._type,
+				r._furniture,
+				b._lat,
+				b._lon,
+				b._fullname,
+				b._shortname,
+				b._address,
+				b._href);
+			allRooms.push(newRoom);
+		}
+	}
+	return allRooms;
+}
+
 
 export async function isValidZip(loadedContent: JSZip): Promise<boolean> {
 	let totalDirectories = 0;

@@ -3,13 +3,13 @@ import {GeoResponse} from "../controller/GeoResponse";
 import {Room} from "./Room";
 
 export class Building {
-	private _lat: number;
-	private _lon: number;
-	private _fullname: string;
-	private _shortname: string;
-	private _address: string;
-	private _href: string;
-	private _rooms: Room[] = [];
+	public _lat: number;
+	public _lon: number;
+	public _fullname: string;
+	public _shortname: string;
+	public _address: string;
+	public _href: string;
+	public _rooms: Room[] = [];
 
 	constructor(lat: number, lon: number, fullname: string, shortname: string, address: string, href: string) {
 		this._lat = lat;
