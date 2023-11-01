@@ -6,6 +6,18 @@ export enum OptionsClause {
   OPTIONS = "OPTIONS"
 }
 
+export enum TransformationsClause {
+  TRANSFORMATIONS = "TRANSFORMATIONS"
+}
+
+export enum GroupClause {
+  GROUP = "GROUP"
+}
+
+export enum ApplyClause {
+  APPLY = "APPLY"
+}
+
 export enum ColumnsClause {
   COLUMNS = "COLUMNS"
 }
@@ -40,6 +52,11 @@ export enum Mfield {
   FAIL = "fail",
   AUDIT = "audit",
   YEAR = "year",
+
+  // Rooms dataset Mfileds
+  LAT = "lat",
+  LON = "lon",
+  SEATS = "seats",
 }
 export enum Sfield {
   DEPT = "dept",
@@ -47,4 +64,27 @@ export enum Sfield {
   INSTRUCTOR = "instructor",
   TITLE = "title",
   UUID = "uuid",
+
+  // Rooms dataset Sfields
+  FULLNAME = "fullname",
+  SHORTNAME = "shortname",
+  NUMBER = "number",
+  NAME = "name",
+  ADDRESS = "address",
+  TYPE = "type",
+  FURNITURE = "furniture",
+  LINK = "href",
+}
+
+export enum APPLYTOKEN {
+  MAX = "MAX",
+  MIN = "MIN",
+  AVG = "AVG",
+  COUNT = "COUNT",
+  SUM = "SUM"
+}
+
+export enum DIRECTION {
+  UP = "UP",
+  DOWN = "DOWN"
 }

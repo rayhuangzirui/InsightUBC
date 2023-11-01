@@ -11,14 +11,14 @@ import path from "path";
 import * as fs from "fs";
 import * as fs_extra from "fs-extra";
 import QueryEngine from "./QueryEngine";
-import {parseQuery} from "./QueryParser";
-import {getIDsFromQuery} from "./Validators";
-import {jsonToSection, isValidZip, isIdKindValid, countRowNumSections, countRowNumBuildings} from "./InsightHelpers";
+import {jsonToSection, isValidZip, isIdKindValid, countRowNumSections, countRowNumBuildings,extractResultValues} from "./InsightHelpers";
 import {parseBuildingData, updateLatLon} from "./BuildingManager";
 import * as building from "./BuildingManager";
 import {DefaultTreeAdapterMap} from "parse5";
 import * as rooms from "./RoomsManager";
 import {Building} from "../model/Building";
+import {parseQuery} from "../QueryParsers/QueryParser";
+import {getIDsFromQuery} from "../QueryParsers/Validators";
 
 /**
  * This is the main programmatic entry point for the project.
@@ -282,6 +282,7 @@ export default class InsightFacade implements IInsightFacade {
 			}
 			return Promise.resolve(result);
 		} catch (error) {
+			console.log("Error is " + error);
 			if (error instanceof InsightError) {
 				return Promise.reject(error);
 			}
