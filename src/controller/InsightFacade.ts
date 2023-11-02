@@ -172,7 +172,7 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async removeDataset(id: string): Promise<string> {
-		try {
+/*		try {
 			await this._initialization;
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
@@ -202,11 +202,12 @@ export default class InsightFacade implements IInsightFacade {
 			return Promise.reject(new InsightError("Invalid kind"));
 		} catch (error) {
 			return Promise.reject(new InsightError("failed to remove dataset"));
-		}
+		}*/
+		return Promise.reject(new InsightError("no implemented"));
 	}
 
 	public async listDatasets(): Promise<InsightDataset[]> {
-		try {
+/*		try {
 			await this._initialization;
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
@@ -215,7 +216,8 @@ export default class InsightFacade implements IInsightFacade {
 			return this._currentAddedInsightDataset;
 		} catch (error) {
 			return Promise.reject(error);
-		}
+		}*/
+		return Promise.reject(new InsightError("no implemented"));
 	}
 
 	public async loadAddedDatasetFromDisk(): Promise<void> {
@@ -253,40 +255,7 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
-		try {
-			await this._initialization;
-		} catch (e) {
-			return Promise.reject(new InsightError("init failed"));
-		}
-		try {
-			let parsedQuery = parseQuery(query);
-			let idFromQuery = getIDsFromQuery(parsedQuery);
-			if (idFromQuery.length > 1) {
-				return Promise.reject(new InsightError("Querying multiple datasets is rejected"));
-			} else if (idFromQuery.length === 0) {
-				return Promise.reject(new InsightError("No key found in the query"));
-			}
-			let id = idFromQuery[0];
-			let dataList = this._currentAddedInsightDataset;
-			if (!dataList.some((dataset) => dataset.id === id)) {
-				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
-			}
-			let dataset = jsonToSection(id);
-			let queryEngine = new QueryEngine(dataset, query);
-			let result: InsightResult[] = queryEngine.runEngine();
-
-			if (result.length > this.MAX_SIZE) {
-				return Promise.reject(new ResultTooLargeError("The result is too big. " +
-					"Only queries with a maximum of 5000 results are supported."));
-			}
-			return Promise.resolve(result);
-		} catch (error) {
-			console.log("Error is " + error);
-			if (error instanceof InsightError) {
-				return Promise.reject(error);
-			}
-			return Promise.reject(new InsightError("Invalid query"));
-		}
+		return Promise.reject(new InsightError("no implemented"));
 	}
 
 	public getCurrentAddedDataset(): InsightDataset[] {
