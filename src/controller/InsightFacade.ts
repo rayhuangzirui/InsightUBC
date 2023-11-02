@@ -274,7 +274,7 @@ export default class InsightFacade implements IInsightFacade {
 			}
 			let kind = dataList.find((dataset) => dataset.id === id)?.kind;
 			let dataset = getDatasetFromKind(kind as InsightDatasetKind, id);
-			let queryEngine = new QueryEngine(dataset, query);
+			let queryEngine = new QueryEngine(dataset, query, kind as InsightDatasetKind);
 			let result: InsightResult[] = queryEngine.runEngine();
 			if (result.length > this.MAX_SIZE) {
 				console.log("The result is too big.");

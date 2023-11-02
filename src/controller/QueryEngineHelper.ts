@@ -1,7 +1,7 @@
 import {ANYKEY, FILTER, Key, LOGICCOMPARISON, MCOMPARISON, SCOMPARISON} from "../QueryParsers/QueryInterfaces";
 import {APPLYTOKEN, LOGIC, MCOMPARATOR, Mfield, Sfield} from "../QueryParsers/ClausesEnum";
-import {isValidField} from "../QueryParsers/Validators";
-import {InsightError} from "./IInsightFacade";
+import {isFieldForRooms, isFieldForSections, isValidField} from "../QueryParsers/Validators";
+import {InsightDatasetKind, InsightError} from "./IInsightFacade";
 import {Decimal} from "decimal.js";
 
 export const fieldMap: {[key in Mfield | Sfield]: string} = {
@@ -32,44 +32,42 @@ export const fieldMap: {[key in Mfield | Sfield]: string} = {
 	href: "_href",
 };
 
-export function filterHelper(entry: any, filter: FILTER): boolean {
+export function filterHelper(entry: any, filter: FILTER, kind: InsightDatasetKind): boolean {
 	if (filter.logicComp) {
-		return logicComHelper(entry, filter.logicComp);
+		return logicComHelper(entry, filter.logicComp, kind);
 	} else if (filter.mComp) {
-		return mComHelper(entry, filter.mComp);
+		return mComHelper(entry, filter.mComp, kind);
 	} else if (filter.sComp) {
-		return sComHelper(entry, filter.sComp);
+		return sComHelper(entry, filter.sComp, kind);
 	} else if (filter.negation) {
-		return !filterHelper(entry, filter.negation.filter);
+		return !filterHelper(entry, filter.negation.filter, kind);
 	} else {
     // No matched return true to the entry
 		return true;
 	}
 }
 
-function logicComHelper(entry: any, logicCom: LOGICCOMPARISON): boolean {
+function logicComHelper(entry: any, logicCom: LOGICCOMPARISON, kind: InsightDatasetKind): boolean {
 	if (logicCom.logic === LOGIC.AND) {
-		return logicCom.filter_list.every((innerFilter) => filterHelper(entry, innerFilter));
+		return logicCom.filter_list.every((innerFilter) => filterHelper(entry, innerFilter, kind));
 	} else if (logicCom.logic === LOGIC.OR) {
-		return logicCom.filter_list.some((innerFilter) => filterHelper(entry, innerFilter));
+		return logicCom.filter_list.some((innerFilter) => filterHelper(entry, innerFilter, kind));
 	} else {
 		return true;
 	}
 }
-function mComHelper(entry: any, mCom: MCOMPARISON): boolean {
+function mComHelper(entry: any, mCom: MCOMPARISON, kind: InsightDatasetKind): boolean {
 	const mappedField = fieldMap[mCom.mkey.field];
-	// if (mappedField === "_seats") {
-	// 	// Iterate over each room and check if any room satisfies the condition
-	// 	for (let room of entry["_rooms"]) {
-	// 		if (compare(room["_seats"], mCom.mcomparator, mCom.num)) {
-	// 			return true;
-	// 		}
-	// 	}
-	// 	return false; // If no room satisfies the condition
-	// }
 
 	// For other fields, use the original logic
 	let mfieldEntry = entry[mappedField];
+	if (kind === InsightDatasetKind.Rooms && isFieldForSections(mappedField)) {
+		throw new InsightError("Cannot compare " + mappedField + " in Rooms dataset");
+	}
+
+	if (kind === InsightDatasetKind.Sections && isFieldForRooms(mappedField)) {
+		throw new InsightError("Cannot compare " + mappedField + " in Sections dataset");
+	}
 	return compare(mfieldEntry, mCom.mcomparator, mCom.num);
 }
 
@@ -86,48 +84,17 @@ function compare(value: number, comparator: MCOMPARATOR, num: number): boolean {
 	}
 }
 
-// function sComHelper(entry: any, sCom: SCOMPARISON): boolean {
-// 	const mappedField = fieldMap[sCom.skey.field];
-// 	let sfieldEntry;
-// 	if (["_room_name", "_room_number", "_type", "_furniture"].includes(mappedField)) {
-// 		for (let room of entry["_rooms"]) {
-// 			sfieldEntry = room[mappedField];
-// 			if (sfieldEntry === sCom.inputstring) {
-// 				return true;
-// 			}
-// 		}
-// 		return false;
-// 	}
-// 	sfieldEntry = entry[mappedField];
-//
-// 	if (sCom.inputstring.startsWith("*") && sCom.inputstring.endsWith("*")) {
-// 		const string = sCom.inputstring.slice(1, -1);
-// 		return sfieldEntry.includes(string);
-// 	} else if (sCom.inputstring.startsWith("*")) {
-// 		return sfieldEntry.endsWith(sCom.inputstring.slice(1));
-// 	} else if (sCom.inputstring.endsWith("*")) {
-// 		return sfieldEntry.startsWith(sCom.inputstring.slice(0, -1));
-// 	}
-//
-// 	return sfieldEntry === sCom.inputstring;
-// }
 
-function sComHelper(entry: any, sCom: SCOMPARISON): boolean {
+function sComHelper(entry: any, sCom: SCOMPARISON, kind: InsightDatasetKind): boolean {
 	const mappedField = fieldMap[sCom.skey.field];
 	let sfieldEntry = entry[mappedField];
+	if (kind === InsightDatasetKind.Rooms && isFieldForSections(mappedField)) {
+		throw new InsightError("Cannot compare " + mappedField + " in Rooms dataset");
+	}
 
-	// Check if the mappedField is one of the room-specific fields
-	// if (["_room_name", "_room_number", "_type", "_furniture"].includes(mappedField)) {
-	// 	sfieldEntry = entry["_rooms"].map((room: any) => room[mappedField]);
-	// } else {
-	// 	sfieldEntry = entry[mappedField];
-	// }
-
-	// if (Array.isArray(sfieldEntry)) {
-	// 	// For array values, we'll check if any room entry matches the string pattern
-	// 	return sfieldEntry.some((value: string) => isStringMatch(value, sCom.inputstring));
-	// }
-
+	if (kind === InsightDatasetKind.Sections && isFieldForRooms(mappedField)) {
+		throw new InsightError("Cannot compare " + mappedField + " in Sections dataset");
+	}
 	return isStringMatch(sfieldEntry, sCom.inputstring);
 }
 
@@ -144,7 +111,7 @@ function isStringMatch(fieldValue: string, pattern: string): boolean {
 	return fieldValue === pattern;
 }
 
-export function selectColumnsHelper(entry: any, keys: ANYKEY[]): any {
+export function selectColumnsHelper(entry: any, keys: ANYKEY[], kind: InsightDatasetKind): any {
 	let projectedEntry: any = {};
 	for (let key of keys) {
 		let comKey;
@@ -155,16 +122,13 @@ export function selectColumnsHelper(entry: any, keys: ANYKEY[]): any {
 		} else {
 			comKey = `${key.idstring}_${key.field}`;
 			let mappedKey = fieldMap[key.field];
-			// if (["_room_name", "_room_number", "_type", "_furniture", "_seats"].includes(mappedKey)) {
-			// 	// If the field is in the "_rooms" array, get its values
-			// 	projectedEntry[comKey] = entry["_rooms"].map((room: any) => room[mappedKey]);
-			// } else {
-			// 	// If not, maintain original logic
-			// 	if (!isValidField(mappedKey, entry[mappedKey])) {
-			// 		return {};
-			// 	}
-			// 	projectedEntry[comKey] = entry[mappedKey];
-			// }
+			if (kind === InsightDatasetKind.Rooms && isFieldForSections(mappedKey)) {
+				throw new InsightError("Cannot compare " + mappedKey + " in Rooms dataset");
+			}
+
+			if (kind === InsightDatasetKind.Sections && isFieldForRooms(mappedKey)) {
+				throw new InsightError("Cannot compare " + mappedKey + " in Sections dataset");
+			}
 			if (!isValidField(mappedKey, entry[mappedKey])) {
 				return {};
 			}

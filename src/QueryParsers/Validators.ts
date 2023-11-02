@@ -1,7 +1,7 @@
 import {APPLYRULE, FILTER, Key} from "./QueryInterfaces";
 import {Mfield, Sfield} from "./ClausesEnum";
 import {InsightDatasetKind, InsightError} from "../controller/IInsightFacade";
-import {jsonToBuildings, jsonToSection} from "../controller/InsightHelpers";
+import {jsonToRooms, jsonToSection} from "../controller/InsightHelpers";
 
 export function IDValidator (id: string): boolean {
 	if (id.includes("_")) {
@@ -112,13 +112,38 @@ function getIDsFromFilter(filter: FILTER, ids: Set<string>): void {
 
 export function isValidField(mappedKey: string, value: any): boolean {
 	const stringFields = ["_dept", "_id", "_instructor", "_title", "_uuid",
-		"_fullname", "_shortname", "_number", "_name", "_address", "_type", "_furniture", "_href"];
+		"_fullname", "_shortname", "_room_number", "_room_name", "_address", "_type", "_furniture", "_href"];
 	const numberFields = ["_avg", "_pass", "_fail", "_audit", "_year", "_lat", "_lon", "_seats"];
 
 	if (stringFields.includes(mappedKey)) {
 		return typeof value === "string";
 	} else if (numberFields.includes(mappedKey)) {
 		return typeof value === "number";
+	}
+	return false;
+}
+
+export function isFieldForRooms(mappedKey: string): boolean {
+	const stringFields = ["_fullname", "_shortname",
+		"_room_number", "_room_name", "_address", "_type", "_furniture", "_href"];
+	const numberFields = ["_lat", "_lon", "_seats"];
+
+	if (stringFields.includes(mappedKey)) {
+		return true;
+	} else if (numberFields.includes(mappedKey)) {
+		return true;
+	}
+	return false;
+}
+
+export function isFieldForSections(mappedKey: string): boolean {
+	const stringFields = ["_dept", "_id", "_instructor", "_title", "_uuid"];
+	const numberFields = ["_avg", "_pass", "_fail", "_audit", "_year"];
+
+	if (stringFields.includes(mappedKey)) {
+		return true;
+	} else if (numberFields.includes(mappedKey)) {
+		return true;
 	}
 	return false;
 }
@@ -149,8 +174,9 @@ export function getDatasetFromKind(kind: InsightDatasetKind, id: string): any {
 		case InsightDatasetKind.Sections:
 			return jsonToSection(id);
 		case InsightDatasetKind.Rooms:
-			return jsonToBuildings(id);
+			return jsonToRooms(id);
 		default:
 			throw new InsightError("No dataset found with the given ID and kind");
 	}
 }
+

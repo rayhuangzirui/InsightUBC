@@ -220,6 +220,8 @@ export function parseMKey(mKey: any): Mkey {
 		throw new InsightError("Invalid mfield value");
 	}
 
+	// idstring_mfield validation
+
 	return {
 		idstring: idstring,
 		field: mfield as Mfield,

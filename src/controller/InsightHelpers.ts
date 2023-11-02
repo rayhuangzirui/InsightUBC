@@ -6,10 +6,12 @@ import JSZip from "jszip";
 import {parse,DefaultTreeAdapterMap} from "parse5";
 import * as parse5 from "parse5";
 import * as fs_extra from "fs-extra";
+import fs_promise from "fs/promises";
 import {parseBuildingData, updateLatLon} from "./BuildingManager";
 import * as building from "./BuildingManager";
 import * as rooms from "./RoomsManager";
 import {Building} from "../model/Building";
+import {Room} from "../model/Room";
 
 export let tables: any[] = [];
 export function extractResultValues(data: any[]): any[] {
@@ -53,11 +55,36 @@ export function jsonToSection(datasetId: string): Section[] {
 	}
 }
 
-export function jsonToBuildings(datasetId: string): Building[] {
+export function jsonToRooms(datasetId: string): Room[] {
 	const dataFilePath = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + datasetId + ".json");
 	let datafileString: string = fs.readFileSync(dataFilePath, "utf8");
-	return  JSON.parse(datafileString);
+	let buildings: Building[] =  JSON.parse(datafileString);
+	return getAllRooms(buildings);
 }
+
+export function getAllRooms(buildings: Building[]): Room[] {
+	let allRooms: Room[] = [];
+	for (const b of buildings) {
+		const rs = b._rooms;
+		for (const r of rs) {
+			const newRoom = new Room(
+				r._room_number,
+				r._room_name,
+				r._seats,
+				r._type,
+				r._furniture,
+				b._lat,
+				b._lon,
+				b._fullname,
+				b._shortname,
+				b._address,
+				b._href);
+			allRooms.push(newRoom);
+		}
+	}
+	return allRooms;
+}
+
 
 export async function isValidZip(loadedContent: JSZip): Promise<boolean> {
 	let totalDirectories = 0;
