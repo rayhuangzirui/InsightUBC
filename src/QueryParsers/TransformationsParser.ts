@@ -113,7 +113,7 @@ export function parseApplyRule(applyRule: any): APPLYRULE {
 	let applyKey = Object.keys(applyRule)[0];
 
   // Check if applyKey is a valid applykey
-	if (!isValidApplyKey(applyKey)) {
+	if (typeof applyKey !== "string" || !isValidApplyKey(applyKey)) {
 		throw new InsightError("Invalid APPLYRULE applykey: " + applyKey);
 	}
 
@@ -138,7 +138,7 @@ export function parseApplyRule(applyRule: any): APPLYRULE {
 	}
 
 	let applyTokenKey = applyTokenObject[applyToken];
-	if (isValidApplyKey(applyTokenKey)) {
+	if (typeof applyTokenKey === "string" && isValidApplyKey(applyTokenKey)) {
 		throw new InsightError("Invalid APPLYRULE target key: " + applyTokenKey);
 	}
 

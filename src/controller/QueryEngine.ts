@@ -98,7 +98,7 @@ export default class QueryEngine {
 		}
 
 		const compareByKey = (a: any, b: any, key: any): number => {
-			if (isValidApplyKey(key)) {
+			if (typeof key === "string") {
 				if (a[key] < b[key]) {
 					return -1;
 				}
@@ -123,6 +123,7 @@ export default class QueryEngine {
 		} else if ("dir" in order && "keys" in order) {
 			const {dir, keys} = order;
 			return dataset.sort((a, b) => {
+				// sorting
 				for (let key of keys) {
 					let comparison = compareByKey(a, b, key);
 					if (comparison !== 0) {
