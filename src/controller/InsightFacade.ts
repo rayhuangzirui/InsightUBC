@@ -12,7 +12,6 @@ import {
 	isIdKindValid,
 	countRowNumSections,
 	countRowNumBuildings,
-	createTimeoutPromise, processAllBuildings
 } from "./InsightHelpers";
 import {findValidBuildingRowsInTable, parseBuildingData, updateLatLon} from "./BuildingManager";
 import * as building from "./BuildingManager";
@@ -115,7 +114,8 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	private async handleRoomsDataset(id: string, content: string): Promise<string[]> {
-		let parsedRoomsDataSet = await parseBuildingData(content);
+		return Promise.reject(new InsightError("failed to remove dataset"));
+/*		let parsedRoomsDataSet = await parseBuildingData(content);
 		let table = building.findBuildingTables(parsedRoomsDataSet);
 		if (!table) {
 			return Promise.reject(new InsightError("no building table found"));
@@ -150,7 +150,7 @@ export default class InsightFacade implements IInsightFacade {
 			id: id, kind: InsightDatasetKind.Rooms, numRows: rowCount,
 		};
 		this._currentAddedInsightDataset.push(datasetToBeAdded);
-		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
+		return this._currentAddedInsightDataset.map((dataset) => dataset.id);*/
 	}
 
 	private async writeDataToFile(id: string, parsedData: any[]): Promise<void> {
