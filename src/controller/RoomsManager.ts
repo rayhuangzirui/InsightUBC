@@ -44,6 +44,7 @@ export function findRoomsTables(
 	return null;
 }
 
+/*
 export function findTbody(table: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
 	if ("childNodes" in table) {
 		for (let child of table.childNodes) {
@@ -60,6 +61,38 @@ export function findTbody(table: DefaultTreeAdapterMap["childNode"]): DefaultTre
 	}
 	return null;
 }
+*/
+
+export function findValidRoomRowsInTable(table: DefaultTreeAdapterMap["childNode"]):
+	Array<DefaultTreeAdapterMap["childNode"]> {
+	function findTbody(node: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
+		if ("childNodes" in node) {
+			for (let child of node.childNodes) {
+				if ("tagName" in child && child.tagName === "tbody") {
+					return child;
+				}
+				const result = findTbody(child);
+				if (result) {
+					return result;
+				}
+			}
+		}
+		return null;
+	}
+
+	const tbody = findTbody(table);
+	let validRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
+	if (tbody && "childNodes" in tbody) {
+		for (let child of tbody.childNodes) {
+			if ("tagName" in child && child.tagName === "tr" && isValidTableOrRow(child)) {
+				validRows.push(child); // 如果是有效的tr元素，加入到结果数组
+			}
+		}
+	}
+
+	return validRows;
+}
+
 
 export function isValidTableOrRow(child: DefaultTreeAdapterMap["childNode"]): boolean {
 	// return hasFullName(element) && hasShortName(element) && hasAddress(element) && hasHref(element);
@@ -138,7 +171,7 @@ export function hasRoomFurniture(child: DefaultTreeAdapterMap["childNode"]): boo
 	return false;
 }
 
-export function findCadidateRoomRows(tbody: DefaultTreeAdapterMap["childNode"]):
+/* export function findCadidateRoomRows(tbody: DefaultTreeAdapterMap["childNode"]):
 	Array<DefaultTreeAdapterMap["childNode"]> {
 	let candidateRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
 	if (tbody) {
@@ -153,9 +186,9 @@ export function findCadidateRoomRows(tbody: DefaultTreeAdapterMap["childNode"]):
 		}
 	}
 	return candidateRows;
-}
+}*/
 
-export function findValidRoomRows(candidateRows: Array<DefaultTreeAdapterMap["childNode"]>):
+/* export function findValidRoomRows(candidateRows: Array<DefaultTreeAdapterMap["childNode"]>):
 	Array<DefaultTreeAdapterMap["childNode"]> {
 	let validRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
 	for (let row of candidateRows) {
@@ -164,7 +197,7 @@ export function findValidRoomRows(candidateRows: Array<DefaultTreeAdapterMap["ch
 		}
 	}
 	return validRows;
-}
+}*/
 export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: Building): Room | null {
 	let roomNumber: string | null = null;
 	let roomName: string | null = null;
@@ -182,7 +215,7 @@ export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: B
 							break;
 						case "views-field views-field-field-room-capacity":
 							// let seatVal = getTextValue(td);
-							seats = getTextValue(td) ? Number(getTextValue(td)) : null;
+							seats = getRoomNumber(td) ? getRoomNumber(td) : null;
 							break;
 						case "views-field views-field-field-room-furniture":
 							furniture = getTextValue(td);
@@ -212,7 +245,18 @@ function getTextValue(node: DefaultTreeAdapterMap["childNode"]): string | null {
 			}
 		}
 	}
-	return null;
+	return "";
+}
+
+function getRoomNumber(node: DefaultTreeAdapterMap["childNode"]): number {
+	if ("childNodes" in node) {
+		for (const child of node.childNodes) {
+			if (child.nodeName === "#text" && "value" in child) {
+				return Number(child.value.trim());
+			}
+		}
+	}
+	return 0;
 }
 
 function getAnchorTextValue(node: DefaultTreeAdapterMap["childNode"]): string | null {
@@ -227,7 +271,7 @@ function getAnchorTextValue(node: DefaultTreeAdapterMap["childNode"]): string | 
 			}
 		}
 	}
-	return null;
+	return "";
 }
 
 export function rowsToRooms(rows: Array<DefaultTreeAdapterMap["childNode"]>, building: Building): Room[] {

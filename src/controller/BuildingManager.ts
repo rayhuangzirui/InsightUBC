@@ -43,7 +43,7 @@ export function findBuildingTables(
 	}
 	return null;
 }
-export function findTbody(table: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
+/* export function findTbody(table: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
 	if ("childNodes" in table) {
 		for (let child of table.childNodes) {
 			if ("tagName" in child) {
@@ -58,8 +58,9 @@ export function findTbody(table: DefaultTreeAdapterMap["childNode"]): DefaultTre
 		}
 	}
 	return null;
-}
+}*/
 
+/*
 export function findCadidateBuildingRows(tbody: DefaultTreeAdapterMap["childNode"]):
 	Array<DefaultTreeAdapterMap["childNode"]> {
 	let candidateRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
@@ -85,6 +86,54 @@ export function findValidBuildingRows(candidateRows: Array<DefaultTreeAdapterMap
 	}
 	return validRows;
 }
+*/
+
+export function findValidBuildingRowsInTable(table: DefaultTreeAdapterMap["childNode"]):
+	Array<DefaultTreeAdapterMap["childNode"]> {
+	let validRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
+
+	// Helper function to recursively search for tbody within table
+	function findTbody(node: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
+		if ("tagName" in node && node.tagName === "tbody") {
+			return node;
+		}
+		if ("childNodes" in node) {
+			for (let child of node.childNodes) {
+				const result = findTbody(child);
+				if (result) {
+					return result;
+				}
+			}
+		}
+		return null;
+	}
+
+	const tbody = findTbody(table);
+	if (tbody) {
+		if ("childNodes" in tbody) {
+			for (let child of tbody.childNodes) {
+				if ("tagName" in child && child.tagName === "tr" && isValidTableOrRow(child)) {
+					validRows.push(child);
+				}
+			}
+		}
+	}
+
+	return validRows;
+}
+
+/* export function findValidBuildingRows(tbody: DefaultTreeAdapterMap["childNode"]):
+	Array<DefaultTreeAdapterMap["childNode"]> {
+	let validRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
+	if ("childNodes" in tbody) {
+		for (let child of tbody.childNodes) {
+			if ("tagName" in child && child.tagName === "tr" && isValidTableOrRow(child)) {
+				validRows.push(child);
+			}
+		}
+	}
+	return validRows;
+}*/
 
 function setFullNameHref(
 	attrs: parse5.Token.Attribute,

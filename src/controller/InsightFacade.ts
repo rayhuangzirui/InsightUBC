@@ -13,13 +13,14 @@ import * as fs_extra from "fs-extra";
 import * as fs_promises from "fs/promises";
 import QueryEngine from "./QueryEngine";
 import {isValidZip, isIdKindValid, countRowNumSections, countRowNumBuildings} from "./InsightHelpers";
-import {parseBuildingData, updateLatLon} from "./BuildingManager";
+import {findValidBuildingRowsInTable, parseBuildingData, updateLatLon} from "./BuildingManager";
 import * as building from "./BuildingManager";
 import {DefaultTreeAdapterMap} from "parse5";
 import * as rooms from "./RoomsManager";
 import {Building} from "../model/Building";
 import {parseQuery} from "../QueryParsers/QueryParser";
 import {getDatasetFromKind, getIDsFromQuery} from "../QueryParsers/Validators";
+import {findValidRoomRowsInTable} from "./RoomsManager";
 /**
  * This is the main programmatic entry point for the project.
  * Method documentation is in IInsightFacade
@@ -115,9 +116,10 @@ export default class InsightFacade implements IInsightFacade {
 		if (!table) {
 			return Promise.reject(new InsightError("no building table found"));
 		}
-		let tbody = building.findTbody(table as DefaultTreeAdapterMap["childNode"]);
-		let candidateRows = building.findCadidateBuildingRows(tbody as DefaultTreeAdapterMap["childNode"]);
-		let validRows = building.findValidBuildingRows(candidateRows);
+		// let tbody = building.findTbody(table as DefaultTreeAdapterMap["childNode"]);
+		let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["childNode"]);
+		// let validRows = building.findValidBuildingRows(candidateRows);
+		console.log(validRows);
 		let buildings = building.jsonToBuilding(validRows);
 		await updateLatLon(buildings);
 		let rowCount = 0;
@@ -126,10 +128,8 @@ export default class InsightFacade implements IInsightFacade {
 			let roomcontent = await rooms.parseRoomData(content, filePath);
 			let roomTable = rooms.findRoomsTables(roomcontent);
 			if (roomTable) {
-				let roomTbody = rooms.findTbody(roomTable as DefaultTreeAdapterMap["childNode"]);
-				let roomCandidateRows = rooms.findCadidateRoomRows(roomTbody as DefaultTreeAdapterMap["childNode"]);
-				let roomValidRows = rooms.findValidRoomRows(roomCandidateRows);
-				let roomsList = rooms.rowsToRooms(roomValidRows, b);
+				let roomTbody = rooms.findValidRoomRowsInTable(roomTable as DefaultTreeAdapterMap["childNode"]);
+				let roomsList = rooms.rowsToRooms(roomTbody, b);
 				if (roomsList.length > 0) {
 					b.setRooms(roomsList);
 				} else {
@@ -140,6 +140,9 @@ export default class InsightFacade implements IInsightFacade {
 				buildings = buildings.filter((item) => item !== b);
 			}
 		});
+/*		let promises = validRows.map(async (b) => {
+
+		}*/
 		await Promise.all(promises);
 		await this.writeBuildingsToFile(id, buildings);
 		let datasetToBeAdded: InsightDataset = {
