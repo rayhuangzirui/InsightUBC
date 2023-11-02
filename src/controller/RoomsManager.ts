@@ -44,25 +44,6 @@ export function findRoomsTables(
 	return null;
 }
 
-/*
-export function findTbody(table: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
-	if ("childNodes" in table) {
-		for (let child of table.childNodes) {
-			if ("tagName" in child) {
-				if (child.tagName === "tbody") {
-					return child;
-				}
-			}
-			const result = findTbody(child);
-			if (result) {
-				return result;
-			}
-		}
-	}
-	return null;
-}
-*/
-
 export function findValidRoomRowsInTable(table: DefaultTreeAdapterMap["childNode"]):
 	Array<DefaultTreeAdapterMap["childNode"]> {
 	function findTbody(node: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
@@ -85,7 +66,7 @@ export function findValidRoomRowsInTable(table: DefaultTreeAdapterMap["childNode
 	if (tbody && "childNodes" in tbody) {
 		for (let child of tbody.childNodes) {
 			if ("tagName" in child && child.tagName === "tr" && isValidTableOrRow(child)) {
-				validRows.push(child); // 如果是有效的tr元素，加入到结果数组
+				validRows.push(child);
 			}
 		}
 	}
@@ -170,34 +151,6 @@ export function hasRoomFurniture(child: DefaultTreeAdapterMap["childNode"]): boo
 	}
 	return false;
 }
-
-/* export function findCadidateRoomRows(tbody: DefaultTreeAdapterMap["childNode"]):
-	Array<DefaultTreeAdapterMap["childNode"]> {
-	let candidateRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
-	if (tbody) {
-		if ("childNodes" in tbody) {
-			for (let child of tbody.childNodes) {
-				if ("tagName" in child) {
-					if (child.tagName === "tr") {
-						candidateRows.push(child);
-					}
-				}
-			}
-		}
-	}
-	return candidateRows;
-}*/
-
-/* export function findValidRoomRows(candidateRows: Array<DefaultTreeAdapterMap["childNode"]>):
-	Array<DefaultTreeAdapterMap["childNode"]> {
-	let validRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
-	for (let row of candidateRows) {
-		if (isValidTableOrRow(row)) {
-			validRows.push(row);
-		}
-	}
-	return validRows;
-}*/
 export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: Building): Room | null {
 	let roomNumber: string = "";
 	let roomName: string = "";
@@ -262,11 +215,6 @@ function getHref(node: DefaultTreeAdapterMap["childNode"]): string {
 	if ("childNodes" in node) {
 		for (const child of node.childNodes) {
 			if (child.nodeName === "a") {
-/*				for (const subChild of child.childNodes) {
-					if (subChild.nodeName === "#text" && "value" in subChild) {
-						return subChild.value.trim();
-					}
-				}*/
 				if ("attrs" in child) {
 					// console.log("child.attrs" + child.attrs);
 					for (const attr of child.attrs) {
