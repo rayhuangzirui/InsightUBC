@@ -98,7 +98,7 @@ export default class QueryEngine {
 		}
 
 		const compareByKey = (a: any, b: any, key: any): number => {
-			if (isValidApplyKey(key)) {
+			if (typeof key === "string") {
 				if (a[key] < b[key]) {
 					return -1;
 				}
