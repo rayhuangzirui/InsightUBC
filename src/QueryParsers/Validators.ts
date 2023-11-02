@@ -1,5 +1,7 @@
 import {APPLYRULE, FILTER, Key} from "./QueryInterfaces";
 import {Mfield, Sfield} from "./ClausesEnum";
+import {InsightDatasetKind, InsightError} from "../controller/IInsightFacade";
+import {jsonToRooms, jsonToSection} from "../controller/InsightHelpers";
 
 export function IDValidator (id: string): boolean {
 	if (id.includes("_")) {
@@ -75,6 +77,22 @@ export function getIDsFromQuery(query: any): string[] {
 		}
 	}
 
+	// Get IDs from the TRANSFORMATIONS clause (GROUP)
+	if (query.transformations && query.transformations.group) {
+		for (const key of query.transformations.group.keys) {
+			ids.add(key.idstring);
+		}
+	}
+
+	// Get IDs from the TRANSFORMATIONS clause (APPLY)
+	if (query.transformations && query.transformations.apply) {
+		if (Array.isArray(query.transformations.apply) && query.transformations.apply.length > 0) {
+			for (const applyRule of query.transformations.apply) {
+				ids.add(applyRule.key.idstring);
+			}
+		}
+	}
+
 	return [...ids];
 }
 
@@ -94,13 +112,38 @@ function getIDsFromFilter(filter: FILTER, ids: Set<string>): void {
 
 export function isValidField(mappedKey: string, value: any): boolean {
 	const stringFields = ["_dept", "_id", "_instructor", "_title", "_uuid",
-		"_fullname", "_shortname", "_number", "_name", "_address", "_type", "_furniture", "_href"];
+		"_fullname", "_shortname", "_room_number", "_room_name", "_address", "_type", "_furniture", "_href"];
 	const numberFields = ["_avg", "_pass", "_fail", "_audit", "_year", "_lat", "_lon", "_seats"];
 
 	if (stringFields.includes(mappedKey)) {
 		return typeof value === "string";
 	} else if (numberFields.includes(mappedKey)) {
 		return typeof value === "number";
+	}
+	return false;
+}
+
+export function isFieldForRooms(mappedKey: string): boolean {
+	const stringFields = ["_fullname", "_shortname",
+		"_room_number", "_room_name", "_address", "_type", "_furniture", "_href"];
+	const numberFields = ["_lat", "_lon", "_seats"];
+
+	if (stringFields.includes(mappedKey)) {
+		return true;
+	} else if (numberFields.includes(mappedKey)) {
+		return true;
+	}
+	return false;
+}
+
+export function isFieldForSections(mappedKey: string): boolean {
+	const stringFields = ["_dept", "_id", "_instructor", "_title", "_uuid"];
+	const numberFields = ["_avg", "_pass", "_fail", "_audit", "_year"];
+
+	if (stringFields.includes(mappedKey)) {
+		return true;
+	} else if (numberFields.includes(mappedKey)) {
+		return true;
 	}
 	return false;
 }
@@ -125,3 +168,15 @@ export function isValidString(str: any): boolean {
 export function isEmptyArray(arr: any): boolean {
 	return arr.length === 0;
 }
+
+export function getDatasetFromKind(kind: InsightDatasetKind, id: string): any {
+	switch (kind) {
+		case InsightDatasetKind.Sections:
+			return jsonToSection(id);
+		case InsightDatasetKind.Rooms:
+			return jsonToRooms(id);
+		default:
+			throw new InsightError("No dataset found with the given ID and kind");
+	}
+}
+

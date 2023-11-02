@@ -70,7 +70,7 @@ export function parseOrder(order: any, key_list: ANYKEY[]): ORDER {
 			// key type determined in parseKey
 			anykey: parseKey(order),
 		};
-	} else if (isValidObject(order) && Object.keys(order).length === 2) {
+	} else if (isValidObject(order) && !Array.isArray(order)) {
 		const validClause = ["dir", "keys"];
 		const orderClause = Object.keys(order);
 
@@ -82,11 +82,16 @@ export function parseOrder(order: any, key_list: ANYKEY[]): ORDER {
 
 		let dir = order["dir"];
 		let keys = order["keys"];
+
 		if (!["UP", "DOWN"].includes(dir)) {
 			throw new InsightError("Invalid ORDER direction");
 		}
 
-		if (!isValidArray(keys) || !keys.every((key: any) => isKeyinList(key, key_list))) {
+		if (!isValidArray(keys) || keys.length === 0) {
+			throw new InsightError("ORDER keys must be a non-empty array");
+		}
+
+		if (!keys.every((key: any) => isKeyinList(key, key_list))) {
 			throw new InsightError("ORDER keys must be in COLUMNS");
 		}
 

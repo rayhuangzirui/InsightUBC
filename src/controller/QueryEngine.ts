@@ -8,19 +8,23 @@ import {
 	selectColumnsHelper,
 } from "./QueryEngineHelper";
 import {
+	isFieldForRooms,
+	isFieldForSections,
 	isKeyInApplyRules,
 	isKeyinGroupList,
-	isValidApplyKey,
+	isValidApplyKey
 } from "../QueryParsers/Validators";
-import {InsightError} from "./IInsightFacade";
+import {InsightDatasetKind, InsightError} from "./IInsightFacade";
 
 export default class QueryEngine {
 	public dataset: any[];
 	public query: Query;
+	public kind: InsightDatasetKind;
 
-	constructor(dataset: any[], inputQuery: any) {
+	constructor(dataset: any[], inputQuery: any, kind: InsightDatasetKind) {
 		this.dataset = dataset;
 		this.query = parseQuery(inputQuery);
+		this.kind = kind;
 	}
 
 	public getFilter(): FILTER {
@@ -55,7 +59,7 @@ export default class QueryEngine {
 			return this.dataset;
 		}
 
-		return this.dataset.filter((entry) => filterHelper(entry, filter));
+		return this.dataset.filter((entry) => filterHelper(entry, filter, this.kind));
 	}
 
 	private selectColumns(dataset: any[]): any[] {
@@ -82,8 +86,7 @@ export default class QueryEngine {
 			}
 		}
 
-		const mappedDataset = dataset.map((entry) => selectColumnsHelper(entry, columnKeys));
-
+		const mappedDataset = dataset.map((entry) => selectColumnsHelper(entry, columnKeys, this.kind));
 		return mappedDataset.filter((entry) => Object.keys(entry).length > 0);
 	}
 
@@ -172,6 +175,13 @@ export default class QueryEngine {
 			return transformations.apply.reduce(
 				(entry: any, applyRule: APPLYRULE) => {
 					const mappedKey = fieldMap[applyRule.key.field];
+					if (this.kind === InsightDatasetKind.Rooms && isFieldForSections(mappedKey)) {
+						throw new InsightError("Cannot compare " + mappedKey + " in Rooms dataset");
+					}
+
+					if (this.kind === InsightDatasetKind.Sections && isFieldForRooms(mappedKey)) {
+						throw new InsightError("Cannot compare " + mappedKey + " in Sections dataset");
+					}
 					entry[applyRule.applykey] = calculateValueByToken(applyRule.applytoken, group, mappedKey);
 					return entry;
 				},

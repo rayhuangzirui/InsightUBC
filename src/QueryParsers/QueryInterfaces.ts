@@ -17,10 +17,6 @@ export interface GROUP {
   keys: Key[];
 }
 
-// export interface APPLY {
-//   applyrules?: APPLYRULE[];
-// }
-
 export interface APPLYRULE {
   applykey: string;
   applytoken: APPLYTOKEN;

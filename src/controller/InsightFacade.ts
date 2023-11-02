@@ -11,14 +11,14 @@ import path from "path";
 import * as fs from "fs";
 import * as fs_extra from "fs-extra";
 import QueryEngine from "./QueryEngine";
-import {jsonToSection, isValidZip, isIdKindValid, countRowNumSections, countRowNumBuildings} from "./InsightHelpers";
+import {isValidZip, isIdKindValid, countRowNumSections, countRowNumBuildings} from "./InsightHelpers";
 import {parseBuildingData, updateLatLon} from "./BuildingManager";
 import * as building from "./BuildingManager";
 import {DefaultTreeAdapterMap} from "parse5";
 import * as rooms from "./RoomsManager";
 import {Building} from "../model/Building";
 import {parseQuery} from "../QueryParsers/QueryParser";
-import {getIDsFromQuery} from "../QueryParsers/Validators";
+import {getDatasetFromKind, getIDsFromQuery} from "../QueryParsers/Validators";
 /**
  * This is the main programmatic entry point for the project.
  * Method documentation is in IInsightFacade
@@ -261,21 +261,23 @@ export default class InsightFacade implements IInsightFacade {
 		try {
 			let parsedQuery = parseQuery(query);
 			let idFromQuery = getIDsFromQuery(parsedQuery);
-			if (idFromQuery.length > 1) {
-				return Promise.reject(new InsightError("Querying multiple datasets is rejected"));
-			} else if (idFromQuery.length === 0) {
-				return Promise.reject(new InsightError("No key found in the query"));
+			if (idFromQuery.length !== 1) {
+				console.log("Querying multiple datasets is rejected");
+				return Promise.reject(new InsightError(idFromQuery.length > 1 ?
+					"Querying multiple datasets is rejected" : "No key found in the query"));
 			}
 			let id = idFromQuery[0];
 			let dataList = this._currentAddedInsightDataset;
 			if (!dataList.some((dataset) => dataset.id === id)) {
+				console.log("Dataset " + id + " does not exist");
 				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
 			}
-			let dataset = jsonToSection(id);
-			let queryEngine = new QueryEngine(dataset, query);
+			let kind = dataList.find((dataset) => dataset.id === id)?.kind;
+			let dataset = getDatasetFromKind(kind as InsightDatasetKind, id);
+			let queryEngine = new QueryEngine(dataset, query, kind as InsightDatasetKind);
 			let result: InsightResult[] = queryEngine.runEngine();
-
 			if (result.length > this.MAX_SIZE) {
+				console.log("The result is too big.");
 				return Promise.reject(new ResultTooLargeError("The result is too big. " +
 					"Only queries with a maximum of 5000 results are supported."));
 			}
@@ -287,10 +289,6 @@ export default class InsightFacade implements IInsightFacade {
 			}
 			return Promise.reject(new InsightError("Invalid query"));
 		}
-	}
-
-	public getCurrentAddedDataset(): InsightDataset[] {
-		return this._currentAddedInsightDataset;
 	}
 
 	public async  ensureDirectoryExists(dataFolderPath: string) {

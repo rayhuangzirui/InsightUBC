@@ -31,31 +31,25 @@ export function extractResultValues(data: any[]): any[] {
 	}
 }
 
-// todo：change the query part
-export async function jsonToSection(datasetId: string): Promise<Section[]> {
+export function jsonToSection(datasetId: string): Section[] {
 	try {
 		const dataFilePath = path.join(__dirname, "..", "..", "data", "Sections" + "_" + datasetId + ".json");
 		// after readfilesync, it's a json string, need to parse it to json object
-		// let datafileString = fs.readFileSync(dataFilePath, "utf8");
+		let datafileString = fs.readFileSync(dataFilePath, "utf8");
 		// the data is of nested json format,after parse, it's a ts object array
 		// the array contains ts objects;  each object element contains a json string(the real data fields for a section)
-		try {
-			let datafileString: string = await fs_promise.readFile(dataFilePath, "utf8");
-			let parsedObjectArray = JSON.parse(datafileString);
-			// return all the section data in the file as an Object[]
-			let sectionRawData = extractResultValues(parsedObjectArray);
-			let sectionArray: Section[] = [];
-			for (let section of sectionRawData) {
-				let testsection = new Section(section.Subject, section.Course,
-					section.Avg, section.Professor, section.Title,
-					section.Pass, section.Fail, section.Audit,
-					String(section.id), Number(section.Year));
-				sectionArray.push(testsection);
-			}
-			return sectionArray;
-		} catch (e) {
-			throw new InsightError("error reading section data");
+		let parsedObjectArray = JSON.parse(datafileString);
+		// return all the section data in the file as an Object[]
+		let sectionRawData = extractResultValues(parsedObjectArray);
+		let sectionArray: Section[] = [];
+		for (let section of sectionRawData) {
+			let testsection = new Section(section.Subject, section.Course,
+				section.Avg, section.Professor, section.Title,
+				section.Pass, section.Fail, section.Audit,
+				String(section.id), Number(section.Year));
+			sectionArray.push(testsection);
 		}
+		return sectionArray;
 	} catch (e) {
 		throw new InsightError("error parsing section data");
 	}
