@@ -2,7 +2,7 @@ import {InsightError} from "../controller/IInsightFacade";
 import {ANYKEY, APPLYRULE, GROUP, Key, TRANSFORMATIONS} from "./QueryInterfaces";
 import {parseKey} from "./FilterParser";
 import {APPLYTOKEN} from "./ClausesEnum";
-import {isValidArray, isEmptyArray, isValidObject, isValidString, isValidApplyKey} from "./Validators";
+import {isValidArray, isValidObject, isValidString, isValidApplyKey} from "./Validators";
 
 export function parseTransformations(transformations: any): TRANSFORMATIONS {
 	if (!isValidObject(transformations)) {
@@ -51,13 +51,13 @@ export function parseGroup(group: any): GROUP {
 		throw new InsightError("GROUP must be an array, but was " + typeof group);
 	}
 
-	if (isEmptyArray(group)) {
+	if (group.length === 0) {
 		throw new InsightError("GROUP must be a non-empty array");
 	}
 
 	let keys: ANYKEY[] = [];
 	for (const key of group) {
-		if (!isValidString(key)) {
+		if (typeof key !== "string") {
 			throw new InsightError("GROUP keys must be string, but was " + typeof key);
 		}
 
@@ -68,7 +68,7 @@ export function parseGroup(group: any): GROUP {
 
 		// key is mkey or skey
 		let parsedKey = parseKey(key);
-		if (!isValidObject(parsedKey)) {
+		if (!parsedKey || typeof parsedKey !== "object") {
 			throw new InsightError("Invalid key in GROUP clause: " + key);
 		}
 
@@ -139,7 +139,7 @@ export function parseApplyRule(applyRule: any): APPLYRULE {
 
 	let applyTokenKey = applyTokenObject[applyToken];
 	if (isValidApplyKey(applyTokenKey)) {
-		throw new InsightError("APPLYTOKEN key cannot be an applykey");
+		throw new InsightError("Invalid APPLYRULE target key: " + applyTokenKey);
 	}
 
   // Check if applyTokenValue is a valid string

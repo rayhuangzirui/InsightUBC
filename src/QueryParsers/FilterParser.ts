@@ -1,7 +1,6 @@
 import {
 	ANYKEY,
 	FILTER,
-	Key,
 	LOGICCOMPARISON,
 	MCOMPARISON,
 	Mkey,
@@ -17,7 +16,6 @@ import {
 	isMkey,
 	isValidObject,
 	isSkey,
-	isValidApplyKey,
 	isValidArray
 } from "./Validators";
 
@@ -169,7 +167,7 @@ export function parseKey(key: any): ANYKEY{
 		return parseSKey(key);
 	}
 
-	throw new InsightError("No appropriate key");
+	throw new InsightError("Invalid key " + key);
 }
 
 export function parseSKey(sKey: any): Skey {
@@ -221,6 +219,8 @@ export function parseMKey(mKey: any): Mkey {
 	if (!Object.values(Mfield).includes(mfield as Mfield)) {
 		throw new InsightError("Invalid mfield value");
 	}
+
+	// idstring_mfield validation
 
 	return {
 		idstring: idstring,
