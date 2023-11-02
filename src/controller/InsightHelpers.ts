@@ -69,19 +69,18 @@ export function getAllRooms(buildings: Building[]): Room[] {
 				r._seats,
 				r._type,
 				r._furniture,
+				r._href,
 				b._lat,
 				b._lon,
 				b._fullname,
 				b._shortname,
-				b._address,
-				b._href
+				b._address
 			);
 			allRooms.push(newRoom);
 		}
 	}
 	return allRooms;
 }
-
 
 export async function isValidZip(loadedContent: JSZip): Promise<boolean> {
 	let totalDirectories = 0;

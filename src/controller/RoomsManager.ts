@@ -168,9 +168,10 @@ export function findValidRoomRows(candidateRows: Array<DefaultTreeAdapterMap["ch
 export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: Building): Room | null {
 	let roomNumber: string = "";
 	let roomName: string = "";
-	let seats: number | null = 0;
+	let seats: number  = 0;
 	let type: string = "";
 	let furniture: string = "";
+	let href: string = "";
 
 	if ("childNodes" in tr) {
 		for (let td of tr.childNodes) {
@@ -188,6 +189,7 @@ export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: B
 							break;
 						case "views-field views-field-field-room-number":
 							roomNumber = getAnchorTextValue(td);
+							href = getHref(td);
 							break;
 					}
 				}
@@ -195,7 +197,54 @@ export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: B
 		}
 	}
 	roomName = building.getShortname() + "_" + roomNumber;
-	return new Room(roomNumber, roomName, seats, type, furniture);
+	let room = new Room(roomNumber, roomName, seats, type, furniture, href);
+	return room;
+}
+
+function getHfref(node: DefaultTreeAdapterMap["childNode"]): string {
+	if ("attrs" in node) {
+		for (const attr of node.attrs) {
+			if (attr.name === "class" && attr.value === "views-field views-field-field-room-number") {
+				if ("childNodes" in node) {
+					for (const child of node.childNodes) {
+						if (child.nodeName === "a") {
+							if ("attrs" in child) {
+								for (const attr1 of child.attrs) {
+									if (attr1.name === "href") {
+										return attr1.value;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return "";
+}
+
+function getHref(node: DefaultTreeAdapterMap["childNode"]): string {
+	if ("childNodes" in node) {
+		for (const child of node.childNodes) {
+			if (child.nodeName === "a") {
+/*				for (const subChild of child.childNodes) {
+					if (subChild.nodeName === "#text" && "value" in subChild) {
+						return subChild.value.trim();
+					}
+				}*/
+				if ("attrs" in child) {
+					// console.log("child.attrs" + child.attrs);
+					for (const attr of child.attrs) {
+						if (attr.name === "href") {
+							return attr.value;
+						}
+					}
+				}
+			}
+		}
+	}
+	return "";
 }
 
 function getTextValue(node: DefaultTreeAdapterMap["childNode"]): string {
@@ -220,7 +269,8 @@ function getSeatValue(node: DefaultTreeAdapterMap["childNode"]): number{
 	return 0;
 }
 
-function getAnchorTextValue(node: DefaultTreeAdapterMap["childNode"]): string {
+function getAnchorTextValue(node: DefaultTreeAdapterMap["childNode"]):
+	string {
 	if ("childNodes" in node) {
 		for (const child of node.childNodes) {
 			if (child.nodeName === "a") {
