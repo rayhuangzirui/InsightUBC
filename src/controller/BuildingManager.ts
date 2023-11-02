@@ -6,7 +6,6 @@ import {tables} from "./InsightHelpers";
 import {GeoResponse} from "./GeoResponse";
 import {InsightError} from "./IInsightFacade";
 import {GeoService} from "./GeoService";
-// mport {Template} from "parse5/dist/tree-adapters/default";
 
 export async function parseBuildingData(content: string): Promise<Array<DefaultTreeAdapterMap["childNode"]>> {
 	let zip = new JSZip();
@@ -28,30 +27,13 @@ export async function parseBuildingData(content: string): Promise<Array<DefaultT
 export function findBuildingTables(
 	nodes: Array<DefaultTreeAdapterMap["childNode"]>
 ): DefaultTreeAdapterMap["childNode"] | null {
-	for (let child of nodes || []) {
-		if ("tagName" in child) {
-			if (child.tagName === "table") {
-				if (isValidTableOrRow(child)){
-					return child;
-				}
-			}
-			const result = findBuildingTables(child.childNodes);
-			if (result) {
-				return result;
-			}
+	for (const node of nodes) {
+		if ("tagName" in node && node.tagName === "table" && isValidTableOrRow(node)) {
+			return node;
 		}
-	}
-	return null;
-}
-export function findTbody(table: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
-	if ("childNodes" in table) {
-		for (let child of table.childNodes) {
-			if ("tagName" in child) {
-				if (child.tagName === "tbody") {
-					return child;
-				}
-			}
-			const result = findTbody(child);
+		if ("childNodes" in node) {
+			const childNodes = node.childNodes || [];
+			const result = findBuildingTables(childNodes);
 			if (result) {
 				return result;
 			}
@@ -60,115 +42,94 @@ export function findTbody(table: DefaultTreeAdapterMap["childNode"]): DefaultTre
 	return null;
 }
 
-export function findCadidateBuildingRows(tbody: DefaultTreeAdapterMap["childNode"]):
-	Array<DefaultTreeAdapterMap["childNode"]> {
-	let candidateRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
-	if ("childNodes" in tbody) {
-		for (let child of tbody.childNodes) {
-			if ("tagName" in child) {
-				if (child.tagName === "tr") {
-					candidateRows.push(child);
-				}
-			}
-		}
-	}
-	return candidateRows;
-}
 
-export function findValidBuildingRows(candidateRows: Array<DefaultTreeAdapterMap["childNode"]>):
+export function findValidBuildingRowsInTable(table: DefaultTreeAdapterMap["childNode"]):
 	Array<DefaultTreeAdapterMap["childNode"]> {
 	let validRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
-	for (let row of candidateRows) {
-		if (isValidTableOrRow(row)) {
-			validRows.push(row);
+	function findTbody(node: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
+		if ("tagName" in node && node.tagName === "tbody") {
+			return node;
+		}
+		if ("childNodes" in node) {
+			for (let child of node.childNodes) {
+				if ("tagName" in child && child.tagName === "tbody") {
+					return child;
+				}
+				if ("childNodes" in child) {
+					const result = findTbody(child);
+					if (result) {
+						return result;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	const tbody = findTbody(table);
+	if (tbody && "childNodes" in tbody) {
+		for (let child of tbody.childNodes) {
+			if ("tagName" in child && child.tagName === "tr" && isValidTableOrRow(child)) {
+				validRows.push(child);
+			}
 		}
 	}
 	return validRows;
 }
 
-function setFullNameHref(
-	attrs: parse5.Token.Attribute,
-	td: DefaultTreeAdapterMap["childNode"]
-/*		| Element
-		| Template
-		| (Element & {childNodes: unknown})
-		| (Template & {
-				childNodes: unknown;
-		  })*/,
-	href: string | null,
-	fullname: string | null
-) {
-	if (attrs.name === "class" && attrs.value === "views-field views-field-title") {
-		if ("childNodes" in td) {
-			for (const child of td.childNodes) {
-				if (child.nodeName === "a") {
-					if ("attrs" in child) {
-						for (const attr of child.attrs) {
-							if (attr.name === "href") {
-								href = attr.value;
-							}
-						}
-					}
-					for (const subChild of child.childNodes) {
-						if (subChild.nodeName === "#text") {
-							if ("value" in subChild) {
-								fullname = subChild.value.trim();
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return {href, fullname};
-}
 
-export function oneRowToBuilding(tr: DefaultTreeAdapterMap["childNode"]): Building{
+export function oneRowToBuilding(tr: DefaultTreeAdapterMap["childNode"]): Building {
 	let lat = 0;
 	let lon = 0;
 	let shortname: string | null = null;
-	let fullname: string| null = null;
-	let address: string| null = null;
-	let href: string| null = null;
+	let fullname: string | null = null;
+	let address: string | null = null;
+	let href: string | null = null;
+	function findText(node: DefaultTreeAdapterMap["childNode"]): string | null {
+		if ("childNodes" in node) {
+			const textNode = node.childNodes.find((child) => child.nodeName === "#text");
+			return textNode && "value" in textNode ? textNode.value.trim() : null;
+		}
+		return null;
+	}
+
 	if ("childNodes" in tr) {
 		for (let td of tr.childNodes) {
 			if ("attrs" in td) {
-				for (let attrs of td.attrs) {
-					const fullNameHref = setFullNameHref(attrs, td, href, fullname);
-					href = fullNameHref.href;
-					fullname = fullNameHref.fullname;
-					if (attrs.name === "class" && attrs.value === "views-field views-field-field-building-address") {
-						if ("childNodes" in td) {
-							for (const child of td.childNodes) {
-								if (child.nodeName === "#text") {
-									if ("value" in child) {
-										address = child.value.trim();
-									}
-								}
-							}
-						}
+				for (let attr of td.attrs) {
+					let result;
+					switch (attr.value) {
+						case "views-field views-field-nothing":
+							result = setFullNameHref(td);
+							href = result.href;
+							fullname = result.fullname;
+							break;
+						case "views-field views-field-field-building-address":
+							address = findText(td);
+							break;
+						case "views-field views-field-field-building-code":
+							shortname = findText(td);
+							break;
 					}
-					if (attrs.name === "class" && attrs.value === "views-field views-field-field-building-code") {
-						if ("childNodes" in td) {
-							for (const child of td.childNodes) {
-								if (child.nodeName === "#text") {
-									if ("value" in child) {
-										shortname = child.value.trim();
-									}
-								}
-							}
-						}
+					if (address && shortname && fullname && href) {
+						break;
 					}
+				}
+				if (address && shortname && fullname && href) {
+					break;
 				}
 			}
 		}
 	}
+
 	if (shortname && fullname && address && href) {
 		return new Building(lat, lon, fullname, shortname, address, href);
 	} else {
 		throw new Error("invalid building row");
 	}
 }
+
+
 export function jsonToBuilding(trs: Array<DefaultTreeAdapterMap["childNode"]>): Building[] {
 	let buildings: Building[] = [];
 	for (let tr of trs) {
@@ -274,6 +235,26 @@ export async function updateLatLon(buildings: Building[]) {
 		}
 	});
 	await Promise.all(promises);
+}
+
+function setFullNameHref(
+	td: DefaultTreeAdapterMap["childNode"]
+): {href: string | null, fullname: string | null} {
+	let href: string | null = null;
+	let fullname: string | null = null;
+	if ("tagName" in td) {
+		const anchorNode = td.childNodes.find((node) => node.nodeName === "a");
+		if (anchorNode && "attrs" in anchorNode) {
+			const hrefAttr = anchorNode.attrs.find((attr) => attr.name === "href");
+			href = hrefAttr ? hrefAttr.value : null;
+
+			const textNode = anchorNode.childNodes.find((node) => node.nodeName === "#text");
+			if (textNode && "value" in textNode) {
+				fullname = textNode.value.trim();
+			}
+		}
+	}
+	return {href, fullname};
 }
 
 

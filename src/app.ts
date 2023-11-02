@@ -3,18 +3,15 @@ import JSZip from "jszip";
 import * as fs from "fs";
 import {Section} from "./model/Section";
 import {InsightDatasetKind} from "./controller/IInsightFacade";
-import InsightFacade from "./controller/InsightFacade";
+// import InsightFacade from "./controller/InsightFacade";
 import * as parse5 from "parse5" ;
+import {jsonToRooms} from "./controller/InsightHelpers";
 
 async function main() {
 	/*		const zipBuffer = await readZip(path.join(__dirname, "./resources/archives/pair.zip"));
 			let parsedDataset = await unzipToDisk(zipBuffer);*/
 	// const zipBuffer = await readZip(path.join(__dirname, "./resources/archives/courses_chem121.zip"));
-	// let pair = fs.readFileSync("./resources/archives/pair.zip").toString("base64");
-	// const zip = new JSZip();
-	// let result = await facade.addDataset("pair", pair, InsightDatasetKind.Sections);
-	/* console.log(result);
-	console.log(facade.getCurrentAddedDataset());*/
+	// console.log();
 	// console.log(facade.getCurrentAddedDataset());
 	// console.log(facade.getCurrentAddedDataset());
 	// let parsedChem121 = await facade.removeDataset("pair");
@@ -42,7 +39,7 @@ async function main() {
 		fs.readFileSync("./resources/archives/pair.zip")
 			.toString("base64"), InsightDatasetKind.Sections);
 */
-	let rooms = fs.readFileSync("./resources/archives/campus.zip").toString("base64");
+/*	let rooms = fs.readFileSync("./resources/archives/campus.zip").toString("base64");
 	let zip = new JSZip();
 	let indexContent;
 	let textContent;
@@ -62,7 +59,6 @@ async function main() {
 	if (textContent) {
 		document = parse5.parse(textContent);
 	}
-	console.log(document);
-
+	console.log(document);*/
 }
 main();
