@@ -152,31 +152,6 @@ export default class InsightFacade implements IInsightFacade {
 		this._currentAddedInsightDataset.push(datasetToBeAdded);
 		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
 	}
-/*
-	private async handleRoomsDataset(id: string, content: string): Promise<string[]> {
-		const timeoutPromise = createTimeoutPromise(6000, "error in adding dataset");
-		const processDatasetPromise = (async () => {
-			let parsedRoomsDataSet = await parseBuildingData(content);
-			let table = building.findBuildingTables(parsedRoomsDataSet);
-			if (!table) {
-				throw new InsightError("no building table found");
-			}
-			let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["childNode"]);
-			let buildings = building.jsonToBuilding(validRows);
-			await updateLatLon(buildings);
-			let rowCount = await processAllBuildings(buildings, content, rooms);
-
-			buildings = buildings.filter((b) => b.getRooms().length > 0);
-			await this.writeBuildingsToFile(id, buildings);
-			let datasetToBeAdded: InsightDataset = {
-				id: id, kind: InsightDatasetKind.Rooms, numRows: rowCount
-			};
-			this._currentAddedInsightDataset.push(datasetToBeAdded);
-			return this._currentAddedInsightDataset.map((dataset) => dataset.id);
-		})();
-		return Promise.race([processDatasetPromise, timeoutPromise]) as Promise<string[]>;
-	}
-*/
 
 	private async writeDataToFile(id: string, parsedData: any[]): Promise<void> {
 		try {
@@ -202,52 +177,45 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async removeDataset(id: string): Promise<string> {
-		/*		try {
+/*				try {
 					await this._initialization;
 				} catch (e) {
 					return Promise.reject(new InsightError("init failed"));
-				}
-				try {
-					if (!isIdKindValid(id, InsightDatasetKind.Sections) && !isIdKindValid(id, InsightDatasetKind.Rooms)) {
-						return Promise.reject(new InsightError());
-					}
-					const datasetExists = this._currentAddedInsightDataset.some((dataset) => dataset.id === id);
-					if (!datasetExists) {
-						return Promise.reject(new NotFoundError("Dataset not found"));
-					}
-					const datasetToRemove = this._currentAddedInsightDataset.find((dataset) => dataset.id === id);
-					if (datasetToRemove?.kind === InsightDatasetKind.Sections) {
-						this._currentAddedInsightDataset = this._currentAddedInsightDataset
-							.filter((dataset) => dataset.id !== id);
-						const pathToDelete = path.join(__dirname, "..","..", "data", "Sections" + "_" + id + ".json");
-						await fs.promises.unlink(pathToDelete);
-						return id;
-					} else if (datasetToRemove?.kind === InsightDatasetKind.Rooms) {
-						this._currentAddedInsightDataset = this._currentAddedInsightDataset
-							.filter((dataset) => dataset.id !== id);
-						const pathToDelete = path.join(__dirname, "..","..", "data", "Buildings" + "_" + id + ".json");
-						await fs.promises.unlink(pathToDelete);
-						return id;
-					}
-					return Promise.reject(new InsightError("Invalid kind"));
-				} catch (error) {
-					return Promise.reject(new InsightError("failed to remove dataset"));
 				}*/
-		return Promise.reject(new InsightError("failed to remove dataset"));
+		try {
+			if (!isIdKindValid(id, InsightDatasetKind.Sections) && !isIdKindValid(id, InsightDatasetKind.Rooms)) {
+				return Promise.reject(new InsightError());
+			}
+			const datasetExists = this._currentAddedInsightDataset.some((dataset) => dataset.id === id);
+			if (!datasetExists) {
+				return Promise.reject(new NotFoundError("Dataset not found"));
+			}
+			const datasetToRemove = this._currentAddedInsightDataset.find((dataset) => dataset.id === id);
+			if (datasetToRemove?.kind === InsightDatasetKind.Sections) {
+				this._currentAddedInsightDataset = this._currentAddedInsightDataset
+					.filter((dataset) => dataset.id !== id);
+				const pathToDelete = path.join(__dirname, "..","..", "data", "Sections" + "_" + id + ".json");
+				await fs.promises.unlink(pathToDelete);
+				return id;
+			} else if (datasetToRemove?.kind === InsightDatasetKind.Rooms) {
+				this._currentAddedInsightDataset = this._currentAddedInsightDataset
+					.filter((dataset) => dataset.id !== id);
+				const pathToDelete = path.join(__dirname, "..","..", "data", "Buildings" + "_" + id + ".json");
+				await fs.promises.unlink(pathToDelete);
+				return id;
+			}
+			return Promise.reject(new InsightError("Invalid kind"));
+		} catch (error) {
+			return Promise.reject(new InsightError("failed to remove dataset"));
+		}
 	}
 
 	public async listDatasets(): Promise<InsightDataset[]> {
-		/*		try {
-					await this._initialization;
-				} catch (e) {
-					return Promise.reject(new InsightError("init failed"));
-				}
-				try {
-					return this._currentAddedInsightDataset;
-				} catch (error) {
-					return Promise.reject(error);
-				}*/
-		return Promise.reject(new InsightError("failed to remove dataset"));
+		try {
+			return this._currentAddedInsightDataset;
+		} catch (error) {
+			return Promise.reject(error);
+		}
 	}
 
 	public async loadAddedDatasetFromDisk(): Promise<void> {
@@ -285,7 +253,42 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
-		return Promise.reject(new InsightError("failed to remove dataset"));
+/*		try {
+			await this._initialization;
+		} catch (e) {
+			return Promise.reject(new InsightError("init failed"));
+		}*/
+		try {
+			let parsedQuery = parseQuery(query);
+			let idFromQuery = getIDsFromQuery(parsedQuery);
+			if (idFromQuery.length !== 1) {
+				console.log("Querying multiple datasets is rejected");
+				return Promise.reject(new InsightError(idFromQuery.length > 1 ?
+					"Querying multiple datasets is rejected" : "No key found in the query"));
+			}
+			let id = idFromQuery[0];
+			let dataList = this._currentAddedInsightDataset;
+			if (!dataList.some((dataset) => dataset.id === id)) {
+				console.log("Dataset " + id + " does not exist");
+				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
+			}
+			let kind = dataList.find((dataset) => dataset.id === id)?.kind;
+			let dataset = await getDatasetFromKind(kind as InsightDatasetKind, id);
+			let queryEngine = new QueryEngine(dataset, query, kind as InsightDatasetKind);
+			let result: InsightResult[] = queryEngine.runEngine();
+			if (result.length > this.MAX_SIZE) {
+				console.log("The result is too big.");
+				return Promise.reject(new ResultTooLargeError("The result is too big. " +
+					"Only queries with a maximum of 5000 results are supported."));
+			}
+			return Promise.resolve(result);
+		} catch (error) {
+			console.log("Error is " + error);
+			if (error instanceof InsightError) {
+				return Promise.reject(error);
+			}
+			return Promise.reject(new InsightError("Invalid query"));
+		}
 	}
 
 	public async ensureDirectoryExists(dataFolderPath: string) {
