@@ -1,10 +1,5 @@
-import {
-	IInsightFacade,
-	InsightDataset,
-	InsightDatasetKind,
-	InsightError,
-	InsightResult,
-	NotFoundError, ResultTooLargeError
+import {IInsightFacade, InsightDataset, InsightDatasetKind, InsightError, InsightResult, NotFoundError,
+	ResultTooLargeError
 } from "./IInsightFacade";
 import JSZip from "jszip";
 import path from "path";
@@ -12,14 +7,22 @@ import * as fs from "fs";
 import * as fs_extra from "fs-extra";
 import * as fs_promises from "fs/promises";
 import QueryEngine from "./QueryEngine";
-import {isValidZip, isIdKindValid, countRowNumSections, countRowNumBuildings} from "./InsightHelpers";
-import {parseBuildingData, updateLatLon} from "./BuildingManager";
+import {
+	isValidZip,
+	isIdKindValid,
+	countRowNumSections,
+	countRowNumBuildings,
+	createTimeoutPromise, processAllBuildings
+} from "./InsightHelpers";
+import {findValidBuildingRowsInTable, parseBuildingData, updateLatLon} from "./BuildingManager";
 import * as building from "./BuildingManager";
 import {DefaultTreeAdapterMap} from "parse5";
 import * as rooms from "./RoomsManager";
 import {Building} from "../model/Building";
 import {parseQuery} from "../QueryParsers/QueryParser";
 import {getDatasetFromKind, getIDsFromQuery} from "../QueryParsers/Validators";
+import {findValidRoomRowsInTable} from "./RoomsManager";
+
 /**
  * This is the main programmatic entry point for the project.
  * Method documentation is in IInsightFacade
@@ -28,16 +31,17 @@ import {getDatasetFromKind, getIDsFromQuery} from "../QueryParsers/Validators";
 export default class InsightFacade implements IInsightFacade {
 	private _currentAddedInsightDataset: InsightDataset[] = [];
 	private MAX_SIZE = 5000;
-	private _initialization: Promise<void>;
+	// private _initialization: Promise<void>;
 	constructor() {
-		this._initialization = this.init()
-			.then(() => {
-				console.log("init success");
-			}).catch(() => {
-				console.log("init failed");
-				throw new InsightError("init failed");
-			});
 		console.log("InsightFacadeImpl::init()");
+		// this._initialization = this.init();
+		/*			.then(() => {
+						console.log("init success");
+					}).catch(() => {
+						console.log("init failed");
+						throw new InsightError("init failed");
+					});
+				console.log("InsightFacadeImpl::init()");*/
 	}
 
 	private async init() {
@@ -49,11 +53,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async addDataset(id: string, content: string, kind: InsightDatasetKind): Promise<string[]> {
-		try {
-			await this._initialization;
-		} catch (e) {
-			return Promise.reject(new InsightError("init failed"));
-		}
+		/*		try {
+					await this._initialization;
+				} catch (e) {
+					return Promise.reject(new InsightError("init failed"));
+				}*/
 		if (kind !== InsightDatasetKind.Sections && kind !== InsightDatasetKind.Rooms) {
 			return Promise.reject(new InsightError("Invalid kind"));
 		}
@@ -70,43 +74,44 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	private async handleSectionsDataset(id: string, content: string): Promise<string[]> {
-		if (this._currentAddedInsightDataset.some((dataset) => dataset.id === id)) {
-			return Promise.reject(new InsightError("Dataset already exists"));
-		}
-		let zip = new JSZip();
-		let jobs: Array<Promise<{[course: string]: string}>> = [];
-		let loadedContent;
-		try {
-			loadedContent = await zip.loadAsync(content, {base64: true});
-			const isValid = await isValidZip(loadedContent);
-			if (!isValid) {
-				throw new InsightError("Zip is not valid");
-			}
-		} catch (error) {
-			throw new InsightError("Zip validation failed");
-		}
-		loadedContent.forEach((relativePath, zipEntry) => {
-			if (!zipEntry.dir && !relativePath.startsWith("__MACOSX/") && !relativePath.endsWith(".DS_Store")) {
-				let job = zipEntry.async("string").then((result) => {
-					return {[zipEntry.name]: result};
-				}).catch((error) => {
-					throw new InsightError("error parsing section data");
+		/*		if (this._currentAddedInsightDataset.some((dataset) => dataset.id === id)) {
+					return Promise.reject(new InsightError("Dataset already exists"));
+				}
+				let zip = new JSZip();
+				let jobs: Array<Promise<{[course: string]: string}>> = [];
+				let loadedContent;
+				try {
+					loadedContent = await zip.loadAsync(content, {base64: true});
+					const isValid = await isValidZip(loadedContent);
+					if (!isValid) {
+						throw new InsightError("Zip is not valid");
+					}
+				} catch (error) {
+					throw new InsightError("Zip validation failed");
+				}
+				loadedContent.forEach((relativePath, zipEntry) => {
+					if (!zipEntry.dir && !relativePath.startsWith("__MACOSX/") && !relativePath.endsWith(".DS_Store")) {
+						let job = zipEntry.async("string").then((result) => {
+							return {[zipEntry.name]: result};
+						}).catch((error) => {
+							throw new InsightError("error parsing section data");
+						});
+						jobs.push(job);
+					}
 				});
-				jobs.push(job);
-			}
-		});
-		let parsedData;
-		try {
-			parsedData = await Promise.all(jobs);
-		} catch (e) {
-			throw new InsightError("error parsing course data");
-		}
-		await this.writeDataToFile(id, parsedData);
-		let datasetToBeAdded: InsightDataset = {
-			id: id, kind: InsightDatasetKind.Sections, numRows: countRowNumSections(parsedData)
-		};
-		this._currentAddedInsightDataset.push(datasetToBeAdded);
-		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
+				let parsedData;
+				try {
+					parsedData = await Promise.all(jobs);
+				} catch (e) {
+					throw new InsightError("error parsing course data");
+				}
+				await this.writeDataToFile(id, parsedData);
+				let datasetToBeAdded: InsightDataset = {
+					id: id, kind: InsightDatasetKind.Sections, numRows: countRowNumSections(parsedData)
+				};
+				this._currentAddedInsightDataset.push(datasetToBeAdded);
+				return this._currentAddedInsightDataset.map((dataset) => dataset.id);*/
+		return Promise.reject(new InsightError("failed to remove dataset"));
 	}
 
 	private async handleRoomsDataset(id: string, content: string): Promise<string[]> {
@@ -115,9 +120,10 @@ export default class InsightFacade implements IInsightFacade {
 		if (!table) {
 			return Promise.reject(new InsightError("no building table found"));
 		}
-		let tbody = building.findTbody(table as DefaultTreeAdapterMap["childNode"]);
-		let candidateRows = building.findCadidateBuildingRows(tbody as DefaultTreeAdapterMap["childNode"]);
-		let validRows = building.findValidBuildingRows(candidateRows);
+		// let tbody = building.findTbody(table as DefaultTreeAdapterMap["childNode"]);
+		let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["childNode"]);
+		// let validRows = building.findValidBuildingRows(candidateRows);
+		// console.log(validRows);
 		let buildings = building.jsonToBuilding(validRows);
 		await updateLatLon(buildings);
 		let rowCount = 0;
@@ -126,10 +132,8 @@ export default class InsightFacade implements IInsightFacade {
 			let roomcontent = await rooms.parseRoomData(content, filePath);
 			let roomTable = rooms.findRoomsTables(roomcontent);
 			if (roomTable) {
-				let roomTbody = rooms.findTbody(roomTable as DefaultTreeAdapterMap["childNode"]);
-				let roomCandidateRows = rooms.findCadidateRoomRows(roomTbody as DefaultTreeAdapterMap["childNode"]);
-				let roomValidRows = rooms.findValidRoomRows(roomCandidateRows);
-				let roomsList = rooms.rowsToRooms(roomValidRows, b);
+				let roomTbody = rooms.findValidRoomRowsInTable(roomTable as DefaultTreeAdapterMap["childNode"]);
+				let roomsList = rooms.rowsToRooms(roomTbody, b);
 				if (roomsList.length > 0) {
 					b.setRooms(roomsList);
 				} else {
@@ -173,11 +177,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async removeDataset(id: string): Promise<string> {
-		try {
-			await this._initialization;
-		} catch (e) {
-			return Promise.reject(new InsightError("init failed"));
-		}
+/*				try {
+					await this._initialization;
+				} catch (e) {
+					return Promise.reject(new InsightError("init failed"));
+				}*/
 		try {
 			if (!isIdKindValid(id, InsightDatasetKind.Sections) && !isIdKindValid(id, InsightDatasetKind.Rooms)) {
 				return Promise.reject(new InsightError());
@@ -208,11 +212,6 @@ export default class InsightFacade implements IInsightFacade {
 
 	public async listDatasets(): Promise<InsightDataset[]> {
 		try {
-			await this._initialization;
-		} catch (e) {
-			return Promise.reject(new InsightError("init failed"));
-		}
-		try {
 			return this._currentAddedInsightDataset;
 		} catch (error) {
 			return Promise.reject(error);
@@ -242,7 +241,7 @@ export default class InsightFacade implements IInsightFacade {
 						this._currentAddedInsightDataset.push({
 							id: file.split(".")[0].split("_")[1],
 							kind: InsightDatasetKind.Rooms,
-							numRows: countRowNumBuildings(parsedData),
+							numRows: countRowNumBuildings(parsedData)
 						});
 					}
 				}
@@ -254,11 +253,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
-		try {
+/*		try {
 			await this._initialization;
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
-		}
+		}*/
 		try {
 			let parsedQuery = parseQuery(query);
 			let idFromQuery = getIDsFromQuery(parsedQuery);
@@ -292,8 +291,8 @@ export default class InsightFacade implements IInsightFacade {
 		}
 	}
 
-	public async  ensureDirectoryExists(dataFolderPath: string) {
-		await this._initialization;
+	public async ensureDirectoryExists(dataFolderPath: string) {
+		// await this._initialization;
 		await fs_extra.ensureDir(dataFolderPath);
 	}
 }
