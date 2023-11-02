@@ -29,7 +29,7 @@ import {findValidRoomRowsInTable} from "./RoomsManager";
 export default class InsightFacade implements IInsightFacade {
 	private _currentAddedInsightDataset: InsightDataset[] = [];
 	private MAX_SIZE = 5000;
-	private _initialization: Promise<void>;
+	// private _initialization: Promise<void>;
 	constructor() {
 		console.log("InsightFacadeImpl::init()");
 		// this._initialization = this.init();
@@ -262,7 +262,7 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async  ensureDirectoryExists(dataFolderPath: string) {
-		await this._initialization;
+		// await this._initialization;
 		await fs_extra.ensureDir(dataFolderPath);
 	}
 }
