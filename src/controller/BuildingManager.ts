@@ -43,50 +43,6 @@ export function findBuildingTables(
 	}
 	return null;
 }
-/* export function findTbody(table: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
-	if ("childNodes" in table) {
-		for (let child of table.childNodes) {
-			if ("tagName" in child) {
-				if (child.tagName === "tbody") {
-					return child;
-				}
-			}
-			const result = findTbody(child);
-			if (result) {
-				return result;
-			}
-		}
-	}
-	return null;
-}*/
-
-/*
-export function findCadidateBuildingRows(tbody: DefaultTreeAdapterMap["childNode"]):
-	Array<DefaultTreeAdapterMap["childNode"]> {
-	let candidateRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
-	if ("childNodes" in tbody) {
-		for (let child of tbody.childNodes) {
-			if ("tagName" in child) {
-				if (child.tagName === "tr") {
-					candidateRows.push(child);
-				}
-			}
-		}
-	}
-	return candidateRows;
-}
-
-export function findValidBuildingRows(candidateRows: Array<DefaultTreeAdapterMap["childNode"]>):
-	Array<DefaultTreeAdapterMap["childNode"]> {
-	let validRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
-	for (let row of candidateRows) {
-		if (isValidTableOrRow(row)) {
-			validRows.push(row);
-		}
-	}
-	return validRows;
-}
-*/
 
 export function findValidBuildingRowsInTable(table: DefaultTreeAdapterMap["childNode"]):
 	Array<DefaultTreeAdapterMap["childNode"]> {
