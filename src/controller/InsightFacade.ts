@@ -74,44 +74,44 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	private async handleSectionsDataset(id: string, content: string): Promise<string[]> {
-		/*		if (this._currentAddedInsightDataset.some((dataset) => dataset.id === id)) {
-					return Promise.reject(new InsightError("Dataset already exists"));
-				}
-				let zip = new JSZip();
-				let jobs: Array<Promise<{[course: string]: string}>> = [];
-				let loadedContent;
-				try {
-					loadedContent = await zip.loadAsync(content, {base64: true});
-					const isValid = await isValidZip(loadedContent);
-					if (!isValid) {
-						throw new InsightError("Zip is not valid");
-					}
-				} catch (error) {
-					throw new InsightError("Zip validation failed");
-				}
-				loadedContent.forEach((relativePath, zipEntry) => {
-					if (!zipEntry.dir && !relativePath.startsWith("__MACOSX/") && !relativePath.endsWith(".DS_Store")) {
-						let job = zipEntry.async("string").then((result) => {
-							return {[zipEntry.name]: result};
-						}).catch((error) => {
-							throw new InsightError("error parsing section data");
-						});
-						jobs.push(job);
-					}
+		if (this._currentAddedInsightDataset.some((dataset) => dataset.id === id)) {
+			return Promise.reject(new InsightError("Dataset already exists"));
+		}
+		let zip = new JSZip();
+		let jobs: Array<Promise<{[course: string]: string}>> = [];
+		let loadedContent;
+		try {
+			loadedContent = await zip.loadAsync(content, {base64: true});
+			const isValid = await isValidZip(loadedContent);
+			if (!isValid) {
+				throw new InsightError("Zip is not valid");
+			}
+		} catch (error) {
+			throw new InsightError("Zip validation failed");
+		}
+		loadedContent.forEach((relativePath, zipEntry) => {
+			if (!zipEntry.dir && !relativePath.startsWith("__MACOSX/") && !relativePath.endsWith(".DS_Store")) {
+				let job = zipEntry.async("string").then((result) => {
+					return {[zipEntry.name]: result};
+				}).catch((error) => {
+					throw new InsightError("error parsing section data");
 				});
-				let parsedData;
-				try {
-					parsedData = await Promise.all(jobs);
-				} catch (e) {
-					throw new InsightError("error parsing course data");
-				}
-				await this.writeDataToFile(id, parsedData);
-				let datasetToBeAdded: InsightDataset = {
-					id: id, kind: InsightDatasetKind.Sections, numRows: countRowNumSections(parsedData)
-				};
-				this._currentAddedInsightDataset.push(datasetToBeAdded);
-				return this._currentAddedInsightDataset.map((dataset) => dataset.id);*/
-		return Promise.reject(new InsightError("failed to remove dataset"));
+				jobs.push(job);
+			}
+		});
+		let parsedData;
+		try {
+			parsedData = await Promise.all(jobs);
+		} catch (e) {
+			throw new InsightError("error parsing course data");
+		}
+		await this.writeDataToFile(id, parsedData);
+		let datasetToBeAdded: InsightDataset = {
+			id: id, kind: InsightDatasetKind.Sections, numRows: countRowNumSections(parsedData)
+		};
+		this._currentAddedInsightDataset.push(datasetToBeAdded);
+		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
+		// return Promise.reject(new InsightError("failed to remove dataset"));
 	}
 
 	private async handleRoomsDataset(id: string, content: string): Promise<string[]> {
