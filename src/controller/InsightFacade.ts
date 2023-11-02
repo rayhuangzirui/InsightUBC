@@ -10,6 +10,7 @@ import JSZip from "jszip";
 import path from "path";
 import * as fs from "fs";
 import * as fs_extra from "fs-extra";
+import * as fs_promises from "fs/promises";
 import QueryEngine from "./QueryEngine";
 import {isValidZip, isIdKindValid, countRowNumSections, countRowNumBuildings} from "./InsightHelpers";
 import {parseBuildingData, updateLatLon} from "./BuildingManager";
@@ -153,7 +154,7 @@ export default class InsightFacade implements IInsightFacade {
 			const pathToWrite = path.join(__dirname, "..", "..", "data", "Sections" + "_" + id + ".json");
 			let stringfiedData = JSON.stringify(parsedData, null, 2);
 			await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
-			fs.writeFileSync(pathToWrite, stringfiedData);
+			await fs_promises.writeFile(pathToWrite, stringfiedData);
 		} catch (e) {
 			throw new InsightError("error writing to file");
 		}
@@ -165,7 +166,7 @@ export default class InsightFacade implements IInsightFacade {
 			const stringfiedData = JSON.stringify(plainData, null, 2);
 			const pathToWrite = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
 			await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
-			fs.writeFileSync(pathToWrite, stringfiedData);
+			await fs_promises.writeFile(pathToWrite, stringfiedData);
 		} catch (e) {
 			throw new InsightError("error writing to file");
 		}
@@ -273,7 +274,7 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
 			}
 			let kind = dataList.find((dataset) => dataset.id === id)?.kind;
-			let dataset = getDatasetFromKind(kind as InsightDatasetKind, id);
+			let dataset = await getDatasetFromKind(kind as InsightDatasetKind, id);
 			let queryEngine = new QueryEngine(dataset, query, kind as InsightDatasetKind);
 			let result: InsightResult[] = queryEngine.runEngine();
 			if (result.length > this.MAX_SIZE) {
