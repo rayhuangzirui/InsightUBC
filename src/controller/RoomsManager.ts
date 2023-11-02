@@ -181,8 +181,7 @@ export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: B
 							type = getTextValue(td);
 							break;
 						case "views-field views-field-field-room-capacity":
-							// let seatVal = getTextValue(td);
-							seats = getTextValue(td) ? Number(getTextValue(td)) : null;
+							seats = getSeatValue(td) ? Number(getSeatValue(td)) : 0;
 							break;
 						case "views-field views-field-field-room-furniture":
 							furniture = getTextValue(td);
@@ -204,7 +203,18 @@ export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: B
 	}
 }
 
-function getTextValue(node: DefaultTreeAdapterMap["childNode"]): string | null {
+function getTextValue(node: DefaultTreeAdapterMap["childNode"]): string {
+	if ("childNodes" in node) {
+		for (const child of node.childNodes) {
+			if (child.nodeName === "#text" && "value" in child) {
+				return child.value.trim();
+			}
+		}
+	}
+	return "";
+}
+
+function getSeatValue(node: DefaultTreeAdapterMap["childNode"]): string|null {
 	if ("childNodes" in node) {
 		for (const child of node.childNodes) {
 			if (child.nodeName === "#text" && "value" in child) {
@@ -227,7 +237,7 @@ function getAnchorTextValue(node: DefaultTreeAdapterMap["childNode"]): string | 
 			}
 		}
 	}
-	return null;
+	return "";
 }
 
 export function rowsToRooms(rows: Array<DefaultTreeAdapterMap["childNode"]>, building: Building): Room[] {

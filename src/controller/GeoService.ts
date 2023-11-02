@@ -16,13 +16,13 @@ export class GeoService {
 				});
 				response.on("end", () => {
 					if (response.statusCode !== 200) {
-						return Promise.reject(new InsightError("error fetching geolocation"));
+						reject(new InsightError("error parsing geolocation data"));
 					} else {
 						resolve(JSON.parse(data) as GeoResponse);
 					}
 				});
 			}).on("error", (error) => {
-				return Promise.reject(new InsightError("error fetching geolocation"));
+				reject(new InsightError("error parsing geolocation data"));
 			});
 		});
 	}

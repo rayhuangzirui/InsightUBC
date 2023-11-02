@@ -2,14 +2,10 @@ import {InsightDataset, InsightDatasetKind, InsightError} from "./IInsightFacade
 import {Section} from "../model/Section";
 import path from "path";
 import fs from "fs";
+import fs_promise from "fs/promises";
 import JSZip from "jszip";
 import {parse,DefaultTreeAdapterMap} from "parse5";
 import * as parse5 from "parse5";
-import * as fs_extra from "fs-extra";
-import fs_promise from "fs/promises";
-import {parseBuildingData, updateLatLon} from "./BuildingManager";
-import * as building from "./BuildingManager";
-import * as rooms from "./RoomsManager";
 import {Building} from "../model/Building";
 import {Room} from "../model/Room";
 
@@ -31,11 +27,11 @@ export function extractResultValues(data: any[]): any[] {
 	}
 }
 
-export function jsonToSection(datasetId: string): Section[] {
+export async function jsonToSection(datasetId: string): Promise<Section[]> {
 	try {
 		const dataFilePath = path.join(__dirname, "..", "..", "data", "Sections" + "_" + datasetId + ".json");
 		// after readfilesync, it's a json string, need to parse it to json object
-		let datafileString = fs.readFileSync(dataFilePath, "utf8");
+		let datafileString = await fs_promise.readFile(dataFilePath, "utf8");
 		// the data is of nested json format,after parse, it's a ts object array
 		// the array contains ts objects;  each object element contains a json string(the real data fields for a section)
 		let parsedObjectArray = JSON.parse(datafileString);
@@ -55,9 +51,9 @@ export function jsonToSection(datasetId: string): Section[] {
 	}
 }
 
-export function jsonToRooms(datasetId: string): Room[] {
+export async function jsonToRooms(datasetId: string): Promise<Room[]> {
 	const dataFilePath = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + datasetId + ".json");
-	let datafileString: string = fs.readFileSync(dataFilePath, "utf8");
+	let datafileString: string = await fs_promise.readFile(dataFilePath, "utf8");
 	let buildings: Building[] =  JSON.parse(datafileString);
 	return getAllRooms(buildings);
 }
