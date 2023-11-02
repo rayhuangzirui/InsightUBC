@@ -79,52 +79,53 @@ export function findValidBuildingRowsInTable(table: DefaultTreeAdapterMap["child
 
 
 export function oneRowToBuilding(tr: DefaultTreeAdapterMap["childNode"]): Building {
+	let lat = 0;
+	let lon = 0;
 	let shortname: string | null = null;
 	let fullname: string | null = null;
 	let address: string | null = null;
 	let href: string | null = null;
-	const isElement = (node: any): node is Element & {childNodes: any[], attrs: any[]} =>
-		Object.prototype.hasOwnProperty.call(node, "attrs") && Object.prototype.hasOwnProperty.call(node, "childNodes");
-	const extractText = (node: any): string | null => {
-		const textNode = node.childNodes.find((child: any) => child.nodeName === "#text");
-		return textNode ? textNode.value.trim() : null;
-	};
-	const extractAnchorData = (node: any): {href: string | null, text: string | null} => {
-		const anchorNode = node.childNodes.find((child: any) => child.nodeName === "a");
-		const href1 = anchorNode?.attrs.find((attr: any) => attr.name === "href")?.value || null;
-		const text = extractText(anchorNode);
-		return {href: href1, text};
-	};
-	if (!("childNodes" in tr)) {
-		throw new Error("Invalid input node");
+	function findText(node: DefaultTreeAdapterMap["childNode"]): string | null {
+		if ("childNodes" in node) {
+			const textNode = node.childNodes.find((child) => child.nodeName === "#text");
+			return textNode && "value" in textNode ? textNode.value.trim() : null;
+		}
+		return null;
 	}
-	for (const node of tr.childNodes) {
-		if (isElement(node)) {
-			for (const attr of node.attrs) {
-				let anchorData;
-				switch (attr.value) {
-					case "views-field views-field-nothing":
-						anchorData = extractAnchorData(node);
-						fullname = anchorData.text;
-						href = anchorData.href;
+
+	if ("childNodes" in tr) {
+		for (let td of tr.childNodes) {
+			if ("attrs" in td) {
+				for (let attr of td.attrs) {
+					let result;
+					switch (attr.value) {
+						case "views-field views-field-nothing":
+							result = setFullNameHref(td);
+							href = result.href;
+							fullname = result.fullname;
+							break;
+						case "views-field views-field-field-building-address":
+							address = findText(td);
+							break;
+						case "views-field views-field-field-building-code":
+							shortname = findText(td);
+							break;
+					}
+					if (address && shortname && fullname && href) {
 						break;
-					case "views-field views-field-field-building-address":
-						address = extractText(node);
-						break;
-					case "views-field views-field-field-building-code":
-						shortname = extractText(node);
-						break;
+					}
+				}
+				if (address && shortname && fullname && href) {
+					break;
 				}
 			}
 		}
-		if (address && shortname && fullname && href) {
-			break;
-		}
 	}
+
 	if (shortname && fullname && address && href) {
-		return new Building(0, 0, fullname, shortname, address, href);
+		return new Building(lat, lon, fullname, shortname, address, href);
 	} else {
-		throw new Error("Incomplete data for building row");
+		throw new Error("invalid building row");
 	}
 }
 
