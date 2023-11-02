@@ -8,6 +8,9 @@ import {parse,DefaultTreeAdapterMap} from "parse5";
 import * as parse5 from "parse5";
 import {Building} from "../model/Building";
 import {Room} from "../model/Room";
+import {parseBuildingData, updateLatLon} from "./BuildingManager";
+import * as building from "./BuildingManager";
+import * as rooms from "./RoomsManager";
 
 export let tables: any[] = [];
 export function extractResultValues(data: any[]): any[] {
@@ -230,3 +233,37 @@ export async function ensureDirectoryExists(dataFolderPath: string) {
 	await fs_extra.ensureDir(dataFolderPath);
 }
 */
+
+export async function processBuilding(
+	b: Building,
+	content: string,
+	roomsModule: any
+): Promise<number> {
+	let filePath = b.getHref().slice(2);
+	let roomContent = await roomsModule.parseRoomData(content, filePath);
+	let roomTable = roomsModule.findRoomsTables(roomContent);
+	if (roomTable) {
+		let roomTbody = roomsModule.findValidRoomRowsInTable(roomTable as DefaultTreeAdapterMap["childNode"]);
+		let roomsList = roomsModule.rowsToRooms(roomTbody, b);
+		if (roomsList.length > 0) {
+			b.setRooms(roomsList);
+			return roomsList.length;
+		}
+	}
+	return 0;
+}
+
+export async function processAllBuildings(
+	buildings: Building[],
+	content: string,
+	roomsModule: any
+): Promise<number> {
+	const roomCounts = await Promise.all(buildings.map((b) => processBuilding(b, content, roomsModule)));
+	return roomCounts.reduce((acc, count) => acc + count, 0);
+}
+
+export function createTimeoutPromise(timeout: number, errorMessage: string): Promise<never> {
+	return new Promise<never>((_, reject) => {
+		setTimeout(() => reject(new InsightError(errorMessage)), timeout);
+	});
+}

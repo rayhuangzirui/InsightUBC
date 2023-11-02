@@ -6,7 +6,6 @@ import {tables} from "./InsightHelpers";
 import {GeoResponse} from "./GeoResponse";
 import {InsightError} from "./IInsightFacade";
 import {GeoService} from "./GeoService";
-// mport {Template} from "parse5/dist/tree-adapters/default";
 
 export async function parseBuildingData(content: string): Promise<Array<DefaultTreeAdapterMap["childNode"]>> {
 	let zip = new JSZip();
@@ -28,14 +27,13 @@ export async function parseBuildingData(content: string): Promise<Array<DefaultT
 export function findBuildingTables(
 	nodes: Array<DefaultTreeAdapterMap["childNode"]>
 ): DefaultTreeAdapterMap["childNode"] | null {
-	for (let child of nodes || []) {
-		if ("tagName" in child) {
-			if (child.tagName === "table") {
-				if (isValidTableOrRow(child)){
-					return child;
-				}
-			}
-			const result = findBuildingTables(child.childNodes);
+	for (const node of nodes) {
+		if ("tagName" in node && node.tagName === "table" && isValidTableOrRow(node)) {
+			return node;
+		}
+		if ("childNodes" in node) {
+			const childNodes = node.childNodes || [];
+			const result = findBuildingTables(childNodes);
 			if (result) {
 				return result;
 			}
@@ -44,20 +42,24 @@ export function findBuildingTables(
 	return null;
 }
 
+
 export function findValidBuildingRowsInTable(table: DefaultTreeAdapterMap["childNode"]):
 	Array<DefaultTreeAdapterMap["childNode"]> {
 	let validRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
-
-	// Helper function to recursively search for tbody within table
 	function findTbody(node: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
 		if ("tagName" in node && node.tagName === "tbody") {
 			return node;
 		}
 		if ("childNodes" in node) {
 			for (let child of node.childNodes) {
-				const result = findTbody(child);
-				if (result) {
-					return result;
+				if ("tagName" in child && child.tagName === "tbody") {
+					return child;
+				}
+				if ("childNodes" in child) {
+					const result = findTbody(child);
+					if (result) {
+						return result;
+					}
 				}
 			}
 		}
@@ -65,23 +67,7 @@ export function findValidBuildingRowsInTable(table: DefaultTreeAdapterMap["child
 	}
 
 	const tbody = findTbody(table);
-	if (tbody) {
-		if ("childNodes" in tbody) {
-			for (let child of tbody.childNodes) {
-				if ("tagName" in child && child.tagName === "tr" && isValidTableOrRow(child)) {
-					validRows.push(child);
-				}
-			}
-		}
-	}
-
-	return validRows;
-}
-
-/* export function findValidBuildingRows(tbody: DefaultTreeAdapterMap["childNode"]):
-	Array<DefaultTreeAdapterMap["childNode"]> {
-	let validRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
-	if ("childNodes" in tbody) {
+	if (tbody && "childNodes" in tbody) {
 		for (let child of tbody.childNodes) {
 			if ("tagName" in child && child.tagName === "tr" && isValidTableOrRow(child)) {
 				validRows.push(child);
@@ -89,91 +75,60 @@ export function findValidBuildingRowsInTable(table: DefaultTreeAdapterMap["child
 		}
 	}
 	return validRows;
-}*/
+}
 
-function setFullNameHref(
-	attrs: parse5.Token.Attribute,
-	td: DefaultTreeAdapterMap["childNode"]
-/*		| Element
-		| Template
-		| (Element & {childNodes: unknown})
-		| (Template & {
-				childNodes: unknown;
-		  })*/,
-	href: string | null,
-	fullname: string | null
-) {
-	if (attrs.name === "class" && attrs.value === "views-field views-field-title") {
-		if ("childNodes" in td) {
-			for (const child of td.childNodes) {
-				if (child.nodeName === "a") {
-					if ("attrs" in child) {
-						for (const attr of child.attrs) {
-							if (attr.name === "href") {
-								href = attr.value;
-							}
-						}
-					}
-					for (const subChild of child.childNodes) {
-						if (subChild.nodeName === "#text") {
-							if ("value" in subChild) {
-								fullname = subChild.value.trim();
-							}
-						}
-					}
+
+export function oneRowToBuilding(tr: DefaultTreeAdapterMap["childNode"]): Building {
+	let shortname: string | null = null;
+	let fullname: string | null = null;
+	let address: string | null = null;
+	let href: string | null = null;
+	const isElement = (node: any): node is Element & {childNodes: any[], attrs: any[]} =>
+		Object.prototype.hasOwnProperty.call(node, "attrs") && Object.prototype.hasOwnProperty.call(node, "childNodes");
+	const extractText = (node: any): string | null => {
+		const textNode = node.childNodes.find((child: any) => child.nodeName === "#text");
+		return textNode ? textNode.value.trim() : null;
+	};
+	const extractAnchorData = (node: any): {href: string | null, text: string | null} => {
+		const anchorNode = node.childNodes.find((child: any) => child.nodeName === "a");
+		const href1 = anchorNode?.attrs.find((attr: any) => attr.name === "href")?.value || null;
+		const text = extractText(anchorNode);
+		return {href: href1, text};
+	};
+	if (!("childNodes" in tr)) {
+		throw new Error("Invalid input node");
+	}
+	for (const node of tr.childNodes) {
+		if (isElement(node)) {
+			for (const attr of node.attrs) {
+				let anchorData;
+				switch (attr.value) {
+					case "views-field views-field-nothing":
+						anchorData = extractAnchorData(node);
+						fullname = anchorData.text;
+						href = anchorData.href;
+						break;
+					case "views-field views-field-field-building-address":
+						address = extractText(node);
+						break;
+					case "views-field views-field-field-building-code":
+						shortname = extractText(node);
+						break;
 				}
 			}
 		}
-	}
-	return {href, fullname};
-}
-
-export function oneRowToBuilding(tr: DefaultTreeAdapterMap["childNode"]): Building{
-	let lat = 0;
-	let lon = 0;
-	let shortname: string | null = null;
-	let fullname: string| null = null;
-	let address: string| null = null;
-	let href: string| null = null;
-	if ("childNodes" in tr) {
-		for (let td of tr.childNodes) {
-			if ("attrs" in td) {
-				for (let attrs of td.attrs) {
-					const fullNameHref = setFullNameHref(attrs, td, href, fullname);
-					href = fullNameHref.href;
-					fullname = fullNameHref.fullname;
-					if (attrs.name === "class" && attrs.value === "views-field views-field-field-building-address") {
-						if ("childNodes" in td) {
-							for (const child of td.childNodes) {
-								if (child.nodeName === "#text") {
-									if ("value" in child) {
-										address = child.value.trim();
-									}
-								}
-							}
-						}
-					}
-					if (attrs.name === "class" && attrs.value === "views-field views-field-field-building-code") {
-						if ("childNodes" in td) {
-							for (const child of td.childNodes) {
-								if (child.nodeName === "#text") {
-									if ("value" in child) {
-										shortname = child.value.trim();
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+		if (address && shortname && fullname && href) {
+			break;
 		}
 	}
 	if (shortname && fullname && address && href) {
-		return new Building(lat, lon, fullname, shortname, address, href);
+		return new Building(0, 0, fullname, shortname, address, href);
 	} else {
-		throw new Error("invalid building row");
+		throw new Error("Incomplete data for building row");
 	}
 }
+
+
 export function jsonToBuilding(trs: Array<DefaultTreeAdapterMap["childNode"]>): Building[] {
 	let buildings: Building[] = [];
 	for (let tr of trs) {
@@ -279,6 +234,26 @@ export async function updateLatLon(buildings: Building[]) {
 		}
 	});
 	await Promise.all(promises);
+}
+
+function setFullNameHref(
+	td: DefaultTreeAdapterMap["childNode"]
+): {href: string | null, fullname: string | null} {
+	let href: string | null = null;
+	let fullname: string | null = null;
+	if ("tagName" in td) {
+		const anchorNode = td.childNodes.find((node) => node.nodeName === "a");
+		if (anchorNode && "attrs" in anchorNode) {
+			const hrefAttr = anchorNode.attrs.find((attr) => attr.name === "href");
+			href = hrefAttr ? hrefAttr.value : null;
+
+			const textNode = anchorNode.childNodes.find((node) => node.nodeName === "#text");
+			if (textNode && "value" in textNode) {
+				fullname = textNode.value.trim();
+			}
+		}
+	}
+	return {href, fullname};
 }
 
 
