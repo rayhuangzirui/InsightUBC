@@ -194,14 +194,8 @@ export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: B
 			}
 		}
 	}
+	roomName = building.getShortname() + "_" + roomNumber;
 	return new Room(roomNumber, roomName, seats, type, furniture);
-
-/*	if (roomNumber && seats && type && furniture) {
-		roomName = building.getShortname() + "_" + roomNumber;
-		return new Room(roomNumber, roomName, seats, type, furniture);
-	} else {
-		return null;
-	}*/
 }
 
 function getTextValue(node: DefaultTreeAdapterMap["childNode"]): string {
