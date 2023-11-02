@@ -10,6 +10,7 @@ import JSZip from "jszip";
 import path from "path";
 import * as fs from "fs";
 import * as fs_extra from "fs-extra";
+import * as fs_promises from "fs/promises";
 import QueryEngine from "./QueryEngine";
 import {isValidZip, isIdKindValid, countRowNumSections, countRowNumBuildings} from "./InsightHelpers";
 import {parseBuildingData, updateLatLon} from "./BuildingManager";
@@ -153,7 +154,7 @@ export default class InsightFacade implements IInsightFacade {
 			const pathToWrite = path.join(__dirname, "..", "..", "data", "Sections" + "_" + id + ".json");
 			let stringfiedData = JSON.stringify(parsedData, null, 2);
 			await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
-			fs.writeFileSync(pathToWrite, stringfiedData);
+			await fs_promises.writeFile(pathToWrite, stringfiedData);
 		} catch (e) {
 			throw new InsightError("error writing to file");
 		}
@@ -165,14 +166,14 @@ export default class InsightFacade implements IInsightFacade {
 			const stringfiedData = JSON.stringify(plainData, null, 2);
 			const pathToWrite = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
 			await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
-			fs.writeFileSync(pathToWrite, stringfiedData);
+			await fs_promises.writeFile(pathToWrite, stringfiedData);
 		} catch (e) {
 			throw new InsightError("error writing to file");
 		}
 	}
 
 	public async removeDataset(id: string): Promise<string> {
-		try {
+/*		try {
 			await this._initialization;
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
@@ -202,11 +203,13 @@ export default class InsightFacade implements IInsightFacade {
 			return Promise.reject(new InsightError("Invalid kind"));
 		} catch (error) {
 			return Promise.reject(new InsightError("failed to remove dataset"));
-		}
+		}*/
+		return Promise.reject(new InsightError("test"));
 	}
 
 	public async listDatasets(): Promise<InsightDataset[]> {
-		try {
+		return Promise.reject(new InsightError("test"));
+/*		try {
 			await this._initialization;
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
@@ -215,7 +218,7 @@ export default class InsightFacade implements IInsightFacade {
 			return this._currentAddedInsightDataset;
 		} catch (error) {
 			return Promise.reject(error);
-		}
+		}*/
 	}
 
 	public async loadAddedDatasetFromDisk(): Promise<void> {
@@ -253,42 +256,7 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
-		try {
-			await this._initialization;
-		} catch (e) {
-			return Promise.reject(new InsightError("init failed"));
-		}
-		try {
-			let parsedQuery = parseQuery(query);
-			let idFromQuery = getIDsFromQuery(parsedQuery);
-			if (idFromQuery.length !== 1) {
-				console.log("Querying multiple datasets is rejected");
-				return Promise.reject(new InsightError(idFromQuery.length > 1 ?
-					"Querying multiple datasets is rejected" : "No key found in the query"));
-			}
-			let id = idFromQuery[0];
-			let dataList = this._currentAddedInsightDataset;
-			if (!dataList.some((dataset) => dataset.id === id)) {
-				console.log("Dataset " + id + " does not exist");
-				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
-			}
-			let kind = dataList.find((dataset) => dataset.id === id)?.kind;
-			let dataset = getDatasetFromKind(kind as InsightDatasetKind, id);
-			let queryEngine = new QueryEngine(dataset, query, kind as InsightDatasetKind);
-			let result: InsightResult[] = queryEngine.runEngine();
-			if (result.length > this.MAX_SIZE) {
-				console.log("The result is too big.");
-				return Promise.reject(new ResultTooLargeError("The result is too big. " +
-					"Only queries with a maximum of 5000 results are supported."));
-			}
-			return Promise.resolve(result);
-		} catch (error) {
-			console.log("Error is " + error);
-			if (error instanceof InsightError) {
-				return Promise.reject(error);
-			}
-			return Promise.reject(new InsightError("Invalid query"));
-		}
+		return Promise.reject(new InsightError("test"));
 	}
 
 	public async  ensureDirectoryExists(dataFolderPath: string) {

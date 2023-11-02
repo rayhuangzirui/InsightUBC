@@ -169,12 +169,12 @@ export function isEmptyArray(arr: any): boolean {
 	return arr.length === 0;
 }
 
-export function getDatasetFromKind(kind: InsightDatasetKind, id: string): any {
+export async function getDatasetFromKind(kind: InsightDatasetKind, id: string): Promise<any>{
 	switch (kind) {
 		case InsightDatasetKind.Sections:
-			return jsonToSection(id);
+			return await jsonToSection(id);
 		case InsightDatasetKind.Rooms:
-			return jsonToRooms(id);
+			return await jsonToRooms(id);
 		default:
 			throw new InsightError("No dataset found with the given ID and kind");
 	}
