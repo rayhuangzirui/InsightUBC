@@ -74,7 +74,8 @@ export function getAllRooms(buildings: Building[]): Room[] {
 				b._fullname,
 				b._shortname,
 				b._address,
-				b._href);
+				b._href
+			);
 			allRooms.push(newRoom);
 		}
 	}
