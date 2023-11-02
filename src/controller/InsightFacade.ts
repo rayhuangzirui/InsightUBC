@@ -31,6 +31,7 @@ export default class InsightFacade implements IInsightFacade {
 	private MAX_SIZE = 5000;
 	private _initialization: Promise<void>;
 	constructor() {
+		console.log("InsightFacadeImpl::init()");
 		// this._initialization = this.init();
 /*			.then(() => {
 				console.log("init success");
@@ -50,11 +51,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async addDataset(id: string, content: string, kind: InsightDatasetKind): Promise<string[]> {
-		try {
+/*		try {
 			await this._initialization;
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
-		}
+		}*/
 		if (kind !== InsightDatasetKind.Sections && kind !== InsightDatasetKind.Rooms) {
 			return Promise.reject(new InsightError("Invalid kind"));
 		}
