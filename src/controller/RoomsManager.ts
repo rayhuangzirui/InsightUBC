@@ -199,11 +199,12 @@ export function hasRoomFurniture(child: DefaultTreeAdapterMap["childNode"]): boo
 	return validRows;
 }*/
 export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: Building): Room | null {
-	let roomNumber: string | null = null;
-	let roomName: string | null = null;
-	let seats: number | null = null;
-	let type: string | null = null;
-	let furniture: string | null = null;
+	let roomNumber: string = "";
+	let roomName: string = "";
+	let seats: number  = 0;
+	let type: string = "";
+	let furniture: string = "";
+	let href: string = "";
 
 	if ("childNodes" in tr) {
 		for (let td of tr.childNodes) {
@@ -214,30 +215,73 @@ export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: B
 							type = getTextValue(td);
 							break;
 						case "views-field views-field-field-room-capacity":
-							// let seatVal = getTextValue(td);
-							seats = getRoomNumber(td) ? getRoomNumber(td) : null;
+
+							seats = getSeatValue(td) ? getSeatValue(td) : 0;
 							break;
 						case "views-field views-field-field-room-furniture":
 							furniture = getTextValue(td);
 							break;
 						case "views-field views-field-field-room-number":
 							roomNumber = getAnchorTextValue(td);
+							href = getHref(td);
 							break;
 					}
 				}
 			}
 		}
 	}
-
-	if (roomNumber && seats && type && furniture) {
-		roomName = building.getShortname() + "_" + roomNumber;
-		return new Room(roomNumber, roomName, seats, type, furniture);
-	} else {
-		return null;
-	}
+	roomName = building.getShortname() + "_" + roomNumber;
+	let room = new Room(roomNumber, roomName, seats, type, furniture, href);
+	return room;
 }
 
-function getTextValue(node: DefaultTreeAdapterMap["childNode"]): string | null {
+function getHfref(node: DefaultTreeAdapterMap["childNode"]): string {
+	if ("attrs" in node) {
+		for (const attr of node.attrs) {
+			if (attr.name === "class" && attr.value === "views-field views-field-field-room-number") {
+				if ("childNodes" in node) {
+					for (const child of node.childNodes) {
+						if (child.nodeName === "a") {
+							if ("attrs" in child) {
+								for (const attr1 of child.attrs) {
+									if (attr1.name === "href") {
+										return attr1.value;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return "";
+}
+
+function getHref(node: DefaultTreeAdapterMap["childNode"]): string {
+	if ("childNodes" in node) {
+		for (const child of node.childNodes) {
+			if (child.nodeName === "a") {
+/*				for (const subChild of child.childNodes) {
+					if (subChild.nodeName === "#text" && "value" in subChild) {
+						return subChild.value.trim();
+					}
+				}*/
+				if ("attrs" in child) {
+					// console.log("child.attrs" + child.attrs);
+					for (const attr of child.attrs) {
+						if (attr.name === "href") {
+							return attr.value;
+						}
+					}
+				}
+			}
+		}
+	}
+	return "";
+}
+
+function getTextValue(node: DefaultTreeAdapterMap["childNode"]): string {
 	if ("childNodes" in node) {
 		for (const child of node.childNodes) {
 			if (child.nodeName === "#text" && "value" in child) {
@@ -248,7 +292,8 @@ function getTextValue(node: DefaultTreeAdapterMap["childNode"]): string | null {
 	return "";
 }
 
-function getRoomNumber(node: DefaultTreeAdapterMap["childNode"]): number {
+
+function getSeatValue(node: DefaultTreeAdapterMap["childNode"]): number{
 	if ("childNodes" in node) {
 		for (const child of node.childNodes) {
 			if (child.nodeName === "#text" && "value" in child) {
@@ -259,7 +304,8 @@ function getRoomNumber(node: DefaultTreeAdapterMap["childNode"]): number {
 	return 0;
 }
 
-function getAnchorTextValue(node: DefaultTreeAdapterMap["childNode"]): string | null {
+function getAnchorTextValue(node: DefaultTreeAdapterMap["childNode"]):
+	string {
 	if ("childNodes" in node) {
 		for (const child of node.childNodes) {
 			if (child.nodeName === "a") {

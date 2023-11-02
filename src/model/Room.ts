@@ -4,12 +4,12 @@ export class Room {
 	public _seats: number;
 	public _type: string;
 	public _furniture: string;
+	public _href: string;
 	public _lat?: number;
 	public _lon?: number;
 	public _fullname?: string;
 	public _shortname?: string;
 	public _address?: string;
-	public _href?: string;
 
 	constructor(
 		room_number: string,
@@ -17,24 +17,24 @@ export class Room {
 		seats: number,
 		type: string,
 		furniture: string,
+		href: string,
 		lat?: number,
 		lon?: number,
 		fullname?: string,
 		shortname?: string,
-		address?: string,
-		href?: string
+		address?: string
 	) {
 		this._room_number = room_number;
 		this._room_name = room_name;
 		this._seats = seats;
 		this._type = type;
 		this._furniture = furniture;
+		this._href = href;
 		this._lat = lat;
 		this._lon = lon;
 		this._fullname = fullname;
 		this._shortname = shortname;
 		this._address = address;
-		this._href = href;
 	}
 
 	public getRoomNumber(): string {
@@ -83,7 +83,8 @@ export class Room {
 			_room_name: this._room_name,
 			_seats: this._seats,
 			_type: this._type,
-			_furniture: this._furniture
+			_furniture: this._furniture,
+			_href: this._href,
 		};
 	}
 }

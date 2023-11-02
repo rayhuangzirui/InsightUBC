@@ -55,6 +55,9 @@ export default class InsightFacade implements IInsightFacade {
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
 		}
+		if (kind !== InsightDatasetKind.Sections && kind !== InsightDatasetKind.Rooms) {
+			return Promise.reject(new InsightError("Invalid kind"));
+		}
 		if (this._currentAddedInsightDataset.map((dataset) => dataset.id).includes(id)) {
 			return Promise.reject(new InsightError("Dataset already exists"));
 		}
@@ -68,9 +71,6 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	private async handleSectionsDataset(id: string, content: string): Promise<string[]> {
-		if (!isIdKindValid(id, InsightDatasetKind.Sections)) {
-			return Promise.reject(new InsightError());
-		}
 		if (this._currentAddedInsightDataset.some((dataset) => dataset.id === id)) {
 			return Promise.reject(new InsightError("Dataset already exists"));
 		}
@@ -176,7 +176,7 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async removeDataset(id: string): Promise<string> {
-/*		try {
+		try {
 			await this._initialization;
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
@@ -206,13 +206,11 @@ export default class InsightFacade implements IInsightFacade {
 			return Promise.reject(new InsightError("Invalid kind"));
 		} catch (error) {
 			return Promise.reject(new InsightError("failed to remove dataset"));
-		}*/
-		return Promise.reject(new InsightError("test"));
+		}
 	}
 
 	public async listDatasets(): Promise<InsightDataset[]> {
-		return Promise.reject(new InsightError("test"));
-/*		try {
+		try {
 			await this._initialization;
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
@@ -221,7 +219,7 @@ export default class InsightFacade implements IInsightFacade {
 			return this._currentAddedInsightDataset;
 		} catch (error) {
 			return Promise.reject(error);
-		}*/
+		}
 	}
 
 	public async loadAddedDatasetFromDisk(): Promise<void> {
@@ -259,7 +257,42 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
-		return Promise.reject(new InsightError("test"));
+		try {
+			await this._initialization;
+		} catch (e) {
+			return Promise.reject(new InsightError("init failed"));
+		}
+		try {
+			let parsedQuery = parseQuery(query);
+			let idFromQuery = getIDsFromQuery(parsedQuery);
+			if (idFromQuery.length !== 1) {
+				console.log("Querying multiple datasets is rejected");
+				return Promise.reject(new InsightError(idFromQuery.length > 1 ?
+					"Querying multiple datasets is rejected" : "No key found in the query"));
+			}
+			let id = idFromQuery[0];
+			let dataList = this._currentAddedInsightDataset;
+			if (!dataList.some((dataset) => dataset.id === id)) {
+				console.log("Dataset " + id + " does not exist");
+				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
+			}
+			let kind = dataList.find((dataset) => dataset.id === id)?.kind;
+			let dataset = await getDatasetFromKind(kind as InsightDatasetKind, id);
+			let queryEngine = new QueryEngine(dataset, query, kind as InsightDatasetKind);
+			let result: InsightResult[] = queryEngine.runEngine();
+			if (result.length > this.MAX_SIZE) {
+				console.log("The result is too big.");
+				return Promise.reject(new ResultTooLargeError("The result is too big. " +
+					"Only queries with a maximum of 5000 results are supported."));
+			}
+			return Promise.resolve(result);
+		} catch (error) {
+			console.log("Error is " + error);
+			if (error instanceof InsightError) {
+				return Promise.reject(error);
+			}
+			return Promise.reject(new InsightError("Invalid query"));
+		}
 	}
 
 	public async  ensureDirectoryExists(dataFolderPath: string) {
