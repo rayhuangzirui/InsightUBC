@@ -114,51 +114,45 @@ export default class InsightFacade implements IInsightFacade {
 		return Promise.reject(new InsightError("failed to remove dataset"));
 	}
 
-	/*	private async handleRoomsDataset(id: string, content: string): Promise<string[]> {
-			const timeout = new Promise((_, reject) => {
-				setTimeout(() => {
-					return Promise.reject(new InsightError("error in adding dataset"));
-				}, 6000);
-			});
-			const task = (async () => {
-				let parsedRoomsDataSet = await parseBuildingData(content);
-				let table = building.findBuildingTables(parsedRoomsDataSet);
-				if (!table) {
-					throw new InsightError("no building table found");
+	private async handleRoomsDataset(id: string, content: string): Promise<string[]> {
+		let parsedRoomsDataSet = await parseBuildingData(content);
+		let table = building.findBuildingTables(parsedRoomsDataSet);
+		if (!table) {
+			return Promise.reject(new InsightError("no building table found"));
+		}
+		// let tbody = building.findTbody(table as DefaultTreeAdapterMap["childNode"]);
+		let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["childNode"]);
+		// let validRows = building.findValidBuildingRows(candidateRows);
+		// console.log(validRows);
+		let buildings = building.jsonToBuilding(validRows);
+		await updateLatLon(buildings);
+		let rowCount = 0;
+		let promises = buildings.map(async (b) => {
+			let filePath = b.getHref().slice(2);
+			let roomcontent = await rooms.parseRoomData(content, filePath);
+			let roomTable = rooms.findRoomsTables(roomcontent);
+			if (roomTable) {
+				let roomTbody = rooms.findValidRoomRowsInTable(roomTable as DefaultTreeAdapterMap["childNode"]);
+				let roomsList = rooms.rowsToRooms(roomTbody, b);
+				if (roomsList.length > 0) {
+					b.setRooms(roomsList);
+				} else {
+					buildings = buildings.filter((item) => item !== b);
 				}
-				let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["childNode"]);
-				let buildings = building.jsonToBuilding(validRows);
-				await updateLatLon(buildings);
-				let rowCount = 0;
-				let promises = buildings.map(async (b) => {
-					let filePath = b.getHref().slice(2);
-					let roomcontent = await rooms.parseRoomData(content, filePath);
-					let roomTable = rooms.findRoomsTables(roomcontent);
-					if (roomTable) {
-						let roomTbody = rooms.findValidRoomRowsInTable(roomTable as DefaultTreeAdapterMap["childNode"]);
-						let roomsList = rooms.rowsToRooms(roomTbody, b);
-						if (roomsList.length > 0) {
-							b.setRooms(roomsList);
-						} else {
-							buildings = buildings.filter((item) => item !== b);
-						}
-						rowCount += roomsList.length;
-					} else {
-						buildings = buildings.filter((item) => item !== b);
-					}
-				});
-
-				await Promise.all(promises);
-				await this.writeBuildingsToFile(id, buildings);
-				let datasetToBeAdded: InsightDataset = {
-					id: id, kind: InsightDatasetKind.Rooms, numRows: rowCount,
-				};
-				this._currentAddedInsightDataset.push(datasetToBeAdded);
-				return this._currentAddedInsightDataset.map((dataset) => dataset.id);
-			})();
-			return Promise.race([task, timeout]);
-		}*/
-
+				rowCount += roomsList.length;
+			} else {
+				buildings = buildings.filter((item) => item !== b);
+			}
+		});
+		await Promise.all(promises);
+		await this.writeBuildingsToFile(id, buildings);
+		let datasetToBeAdded: InsightDataset = {
+			id: id, kind: InsightDatasetKind.Rooms, numRows: rowCount,
+		};
+		this._currentAddedInsightDataset.push(datasetToBeAdded);
+		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
+	}
+/*
 	private async handleRoomsDataset(id: string, content: string): Promise<string[]> {
 		const timeoutPromise = createTimeoutPromise(6000, "error in adding dataset");
 		const processDatasetPromise = (async () => {
@@ -182,6 +176,7 @@ export default class InsightFacade implements IInsightFacade {
 		})();
 		return Promise.race([processDatasetPromise, timeoutPromise]) as Promise<string[]>;
 	}
+*/
 
 	private async writeDataToFile(id: string, parsedData: any[]): Promise<void> {
 		try {
