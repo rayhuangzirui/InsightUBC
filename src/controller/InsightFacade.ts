@@ -21,6 +21,7 @@ import {Building} from "../model/Building";
 import {parseQuery} from "../QueryParsers/QueryParser";
 import {getDatasetFromKind, getIDsFromQuery} from "../QueryParsers/Validators";
 import {findValidRoomRowsInTable} from "./RoomsManager";
+import {Room} from "../model/Room";
 
 /**
  * This is the main programmatic entry point for the project.
@@ -114,43 +115,21 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	private async handleRoomsDataset(id: string, content: string): Promise<string[]> {
-		return Promise.reject(new InsightError("failed to remove dataset"));
-/*		let parsedRoomsDataSet = await parseBuildingData(content);
+		// return Promise.reject(new InsightError("failed to remove dataset"));
+		let parsedRoomsDataSet = await parseBuildingData(content);
 		let table = building.findBuildingTables(parsedRoomsDataSet);
 		if (!table) {
-			return Promise.reject(new InsightError("no building table found"));
+			return Promise.reject(new InsightError("no table found"));
 		}
-		// let tbody = building.findTbody(table as DefaultTreeAdapterMap["childNode"]);
-		let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["childNode"]);
-		// let validRows = building.findValidBuildingRows(candidateRows);
-		// console.log(validRows);
-		let buildings = building.jsonToBuilding(validRows);
-		await updateLatLon(buildings);
+		let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
+		let allRooms = await building.jsonToRooms(content, validRows);
 		let rowCount = 0;
-		let promises = buildings.map(async (b) => {
-			let filePath = b.getHref().slice(2);
-			let roomcontent = await rooms.parseRoomData(content, filePath);
-			let roomTable = rooms.findRoomsTables(roomcontent);
-			if (roomTable) {
-				let roomTbody = rooms.findValidRoomRowsInTable(roomTable as DefaultTreeAdapterMap["childNode"]);
-				let roomsList = rooms.rowsToRooms(roomTbody, b);
-				if (roomsList.length > 0) {
-					b.setRooms(roomsList);
-				} else {
-					buildings = buildings.filter((item) => item !== b);
-				}
-				rowCount += roomsList.length;
-			} else {
-				buildings = buildings.filter((item) => item !== b);
-			}
-		});
-		await Promise.all(promises);
-		await this.writeBuildingsToFile(id, buildings);
 		let datasetToBeAdded: InsightDataset = {
 			id: id, kind: InsightDatasetKind.Rooms, numRows: rowCount,
 		};
+		await this.writeBuildingsToFile(id, allRooms);
 		this._currentAddedInsightDataset.push(datasetToBeAdded);
-		return this._currentAddedInsightDataset.map((dataset) => dataset.id);*/
+		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
 	}
 
 	private async writeDataToFile(id: string, parsedData: any[]): Promise<void> {
@@ -164,10 +143,9 @@ export default class InsightFacade implements IInsightFacade {
 		}
 	}
 
-	private async writeBuildingsToFile(id: string, buildingData: Building[]): Promise<void> {
+	private async writeBuildingsToFile(id: string, roomData: Room[]): Promise<void> {
 		try {
-			const plainData = buildingData.map((b) => b.toPlainObject());
-			const stringfiedData = JSON.stringify(plainData, null, 2);
+			const stringfiedData = JSON.stringify(roomData, null, 2);
 			const pathToWrite = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
 			await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
 			await fs_promises.writeFile(pathToWrite, stringfiedData);
@@ -177,11 +155,6 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async removeDataset(id: string): Promise<string> {
-/*				try {
-					await this._initialization;
-				} catch (e) {
-					return Promise.reject(new InsightError("init failed"));
-				}*/
 		try {
 			if (!isIdKindValid(id, InsightDatasetKind.Sections) && !isIdKindValid(id, InsightDatasetKind.Rooms)) {
 				return Promise.reject(new InsightError());

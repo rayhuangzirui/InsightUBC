@@ -6,22 +6,23 @@ import * as fs_extra from "fs-extra";
 import {InsightError} from "./IInsightFacade";
 import {Room} from "../model/Room";
 import {Building} from "../model/Building";
-// import {hasAddress, hasFullName, hasHref, hasShortName, isValidTableOrRow} from "./BuildingManager";
 
-
-export async function parseRoomData(content: string, roomFilePath: string):
-	Promise<Array<DefaultTreeAdapterMap["childNode"]>> {
+export async function parseOneRoomData(content: string,path: string) {
 	let zip = new JSZip();
 	await zip.loadAsync(content, {base64: true});
-	let fileContent = zip.file(roomFilePath);
+	let fileContent = zip.file(path);
 	if (!fileContent) {
 		throw new InsightError("no room html in zip");
 	}
-	let textContent = await fileContent.async("text");
-	if (!textContent) {
-		throw new InsightError("no room html in zip");
+	let textContent = "";
+	try {
+		textContent = await fileContent.async("text");
+		if (!textContent) {
+			throw new InsightError("no room html in zip");
+		}
+	} catch (error) {
+		throw new InsightError("parsing room failed");
 	}
-	// return a document object, this object is similar to the DOM tree
 	return parse5.parse(textContent).childNodes;
 }
 
@@ -29,12 +30,9 @@ export function findRoomsTables(
 	nodes: Array<DefaultTreeAdapterMap["childNode"]>
 ): DefaultTreeAdapterMap["childNode"] | null {
 	for (let child of nodes || []) {
-		if ("tagName" in child) {
-			if (child.tagName === "table") {
-				if (isValidTableOrRow(child)){
-					return child;
-				}
-			}
+		if ("tagName" in child && child.nodeName === "table" && isValidTableOrRow(child)) {
+			return child;
+		} else if ("childNodes" in child) {
 			const result = findRoomsTables(child.childNodes);
 			if (result) {
 				return result;
@@ -47,14 +45,16 @@ export function findRoomsTables(
 export function findValidRoomRowsInTable(table: DefaultTreeAdapterMap["childNode"]):
 	Array<DefaultTreeAdapterMap["childNode"]> {
 	function findTbody(node: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
-		if ("childNodes" in node) {
-			for (let child of node.childNodes) {
-				if ("tagName" in child && child.tagName === "tbody") {
-					return child;
-				}
-				const result = findTbody(child);
-				if (result) {
-					return result;
+		if (node) {
+			if ("childNodes" in node) {
+				for (let child of node.childNodes) {
+					if ("tagName" in child && child.tagName === "tbody") {
+						return child;
+					}
+					const result = findTbody(child);
+					if (result) {
+						return result;
+					}
 				}
 			}
 		}
@@ -74,9 +74,7 @@ export function findValidRoomRowsInTable(table: DefaultTreeAdapterMap["childNode
 	return validRows;
 }
 
-
 export function isValidTableOrRow(child: DefaultTreeAdapterMap["childNode"]): boolean {
-	// return hasFullName(element) && hasShortName(element) && hasAddress(element) && hasHref(element);
 	return hasRoomNumber(child) && hasRoomSeats(child) && hasRoomType(child) && hasRoomFurniture(child);
 }
 
@@ -158,7 +156,6 @@ export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: B
 	let type: string = "";
 	let furniture: string = "";
 	let href: string = "";
-
 	if ("childNodes" in tr) {
 		for (let td of tr.childNodes) {
 			if ("attrs" in td) {
@@ -188,27 +185,41 @@ export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: B
 	return room;
 }
 
-function getHfref(node: DefaultTreeAdapterMap["childNode"]): string {
-	if ("attrs" in node) {
-		for (const attr of node.attrs) {
-			if (attr.name === "class" && attr.value === "views-field views-field-field-room-number") {
-				if ("childNodes" in node) {
-					for (const child of node.childNodes) {
-						if (child.nodeName === "a") {
-							if ("attrs" in child) {
-								for (const attr1 of child.attrs) {
-									if (attr1.name === "href") {
-										return attr1.value;
-									}
-								}
-							}
-						}
+export function oneRowToRoom2(tr: DefaultTreeAdapterMap["childNode"], lat: number,lon: number,
+	fullname: string,shortname: string, address: string): Room | null {
+	let roomNumber: string = "";
+	let roomName: string = "";
+	let seats: number  = 0;
+	let type: string = "";
+	let furniture: string = "";
+	let href: string = "";
+	if ("childNodes" in tr) {
+		for (let td of tr.childNodes) {
+			if ("attrs" in td) {
+				for (let attrs of td.attrs) {
+					switch (attrs.value) {
+						case "views-field views-field-field-room-type":
+							type = getTextValue(td);
+							break;
+						case "views-field views-field-field-room-capacity":
+
+							seats = getSeatValue(td) ? getSeatValue(td) : 0;
+							break;
+						case "views-field views-field-field-room-furniture":
+							furniture = getTextValue(td);
+							break;
+						case "views-field views-field-field-room-number":
+							roomNumber = getAnchorTextValue(td);
+							href = getHref(td);
+							break;
 					}
 				}
 			}
 		}
 	}
-	return "";
+	roomName = shortname + "_" + roomNumber;
+	let room = new Room(roomNumber, roomName, seats, type, furniture, href, lat, lon, fullname, shortname, address);
+	return room;
 }
 
 function getHref(node: DefaultTreeAdapterMap["childNode"]): string {
@@ -216,7 +227,6 @@ function getHref(node: DefaultTreeAdapterMap["childNode"]): string {
 		for (const child of node.childNodes) {
 			if (child.nodeName === "a") {
 				if ("attrs" in child) {
-					// console.log("child.attrs" + child.attrs);
 					for (const attr of child.attrs) {
 						if (attr.name === "href") {
 							return attr.value;
