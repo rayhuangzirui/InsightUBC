@@ -57,8 +57,7 @@ export async function jsonToSection(datasetId: string): Promise<Section[]> {
 export async function jsonToRooms(datasetId: string): Promise<Room[]> {
 	const dataFilePath = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + datasetId + ".json");
 	let datafileString: string = await fs_promise.readFile(dataFilePath, "utf8");
-	let buildings: Building[] =  JSON.parse(datafileString);
-	return getAllRooms(buildings);
+	return  JSON.parse(datafileString);
 }
 
 export function getAllRooms(buildings: Building[]): Room[] {

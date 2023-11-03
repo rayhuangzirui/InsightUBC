@@ -111,7 +111,6 @@ export default class InsightFacade implements IInsightFacade {
 		};
 		this._currentAddedInsightDataset.push(datasetToBeAdded);
 		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
-		// return Promise.reject(new InsightError("failed to remove dataset"));
 	}
 
 	private async handleRoomsDataset(id: string, content: string): Promise<string[]> {

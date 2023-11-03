@@ -1,7 +1,7 @@
 import {APPLYRULE, FILTER, Key} from "./QueryInterfaces";
 import {Mfield, Sfield} from "./ClausesEnum";
 import {InsightDatasetKind, InsightError} from "../controller/IInsightFacade";
-import {jsonToRooms, jsonToSection} from "../controller/InsightHelpers";
+import {jsonToRooms,jsonToSection} from "../controller/InsightHelpers";
 
 export function IDValidator (id: string): boolean {
 	if (id.includes("_")) {

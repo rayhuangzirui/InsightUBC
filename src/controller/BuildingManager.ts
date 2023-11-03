@@ -17,8 +17,6 @@ import {
 } from "./RoomsManager";
 import fs_promise from "fs/promises";
 import {Room} from "../model/Room";
-import * as rooms from "./RoomsManager";
-import * as child_process from "child_process";
 
 export async function parseBuildingData(content: string): Promise<Array<DefaultTreeAdapterMap["element"]>> {
 	let zip = new JSZip();
