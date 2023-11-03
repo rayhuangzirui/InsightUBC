@@ -96,8 +96,8 @@ export class Building {
 			_fullname: this._fullname,
 			_shortname: this._shortname,
 			_address: this._address,
-			// _href: this._href,
-			_rooms: this._rooms.map((room) => room.toPlainObject())
+			_href: this._href,
+			// _rooms: this._rooms.map((room) => room.toPlainObject())
 		};
 	}
 }
