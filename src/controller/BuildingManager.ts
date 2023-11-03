@@ -1,4 +1,4 @@
-import {DefaultTreeAdapterMap, parse} from "parse5";
+import {DefaultTreeAdapterMap, foreignContent, parse} from "parse5";
 import JSZip from "jszip";
 import * as parse5 from "parse5";
 import {Building} from "../model/Building";
@@ -6,8 +6,18 @@ import {tables} from "./InsightHelpers";
 import {GeoResponse} from "./GeoResponse";
 import {InsightError} from "./IInsightFacade";
 import {GeoService} from "./GeoService";
+import {parseGroup} from "../QueryParsers/TransformationsParser";
+import {ifError} from "assert";
+import {
+	findRoomsTables,
+	findValidRoomRowsInTable,
+	oneRowToRoom2,
+	parseOneRoomData
+} from "./RoomsManager";
+import {Room} from "../model/Room";
+import {LOGIC} from "../QueryParsers/ClausesEnum";
 
-export async function parseBuildingData(content: string): Promise<Array<DefaultTreeAdapterMap["childNode"]>> {
+export async function parseBuildingData(content: string): Promise<Array<DefaultTreeAdapterMap["element"]>> {
 	let zip = new JSZip();
 
 	await zip.loadAsync(content, {base64: true});
@@ -21,125 +31,153 @@ export async function parseBuildingData(content: string): Promise<Array<DefaultT
 	if (!textContent) {
 		throw new Error("Failed to retrieve the content from index.htm.");
 	}
-	return parse5.parse(textContent).childNodes;
+	return parse5.parse(textContent).childNodes as Array<DefaultTreeAdapterMap["element"]>;
 }
 
 export function findBuildingTables(
-	nodes: Array<DefaultTreeAdapterMap["childNode"]>
-): DefaultTreeAdapterMap["childNode"] | null {
+	nodes: Array<DefaultTreeAdapterMap["element"]>
+): DefaultTreeAdapterMap["element"] | null {
 	for (const node of nodes) {
-		if ("tagName" in node && node.tagName === "table" && isValidTableOrRow(node)) {
+		if (node.tagName === "table" && isValidTableOrRow(node)) {
 			return node;
 		}
-		if ("childNodes" in node) {
-			const childNodes = node.childNodes || [];
-			const result = findBuildingTables(childNodes);
-			if (result) {
-				return result;
-			}
+		const childNodes: Array<DefaultTreeAdapterMap["childNode"]> = node.childNodes || [];
+		const result = findBuildingTables(childNodes as Array<DefaultTreeAdapterMap["element"]>);
+		if (result) {
+			return result;
 		}
 	}
 	return null;
 }
 
-
-export function findValidBuildingRowsInTable(table: DefaultTreeAdapterMap["childNode"]):
-	Array<DefaultTreeAdapterMap["childNode"]> {
-	let validRows: Array<DefaultTreeAdapterMap["childNode"]> = [];
-	function findTbody(node: DefaultTreeAdapterMap["childNode"]): DefaultTreeAdapterMap["childNode"] | null {
-		if ("tagName" in node && node.tagName === "tbody") {
-			return node;
-		}
-		if ("childNodes" in node) {
-			for (let child of node.childNodes) {
-				if ("tagName" in child && child.tagName === "tbody") {
-					return child;
-				}
-				if ("childNodes" in child) {
-					const result = findTbody(child);
-					if (result) {
-						return result;
-					}
-				}
-			}
-		}
-		return null;
-	}
-
-	const tbody = findTbody(table);
-	if (tbody && "childNodes" in tbody) {
-		for (let child of tbody.childNodes) {
-			if ("tagName" in child && child.tagName === "tr" && isValidTableOrRow(child)) {
-				validRows.push(child);
-			}
+export async function oneRowToRooms(content: string, tr: DefaultTreeAdapterMap["childNode"]): Promise<Room[]> {
+	let roomList: Room[] = [];
+	let geoService = new GeoService();
+	let lat: number = 0;
+	let lon: number = 0;
+	let address: string = extractAddress(tr);
+	let shortname: string = extractShortname(tr);
+	let fullname: string = extractFullname(tr);
+	let bHref: string = extractHref(tr);
+	// console.log(address);
+	if (address) {
+		let geoResponse = await geoService.fetchGeolocation(address);
+		if (geoResponse.lat && geoResponse.lon) {
+			lat = geoResponse.lat;
+			lon = geoResponse.lon;
 		}
 	}
+
+	let room = await parseOneRoomData(content, bHref.slice(2));
+	let roomTable = findRoomsTables(room) as DefaultTreeAdapterMap["element"];
+	let trs = findValidRoomRowsInTable(roomTable);
+	for (let row of trs) {
+		let aroom = oneRowToRoom2(row, lat, lon, fullname, shortname, address);
+		if (aroom) {
+			roomList.push(aroom);
+		}
+	}
+
+	return roomList;
+}
+
+export function findValidBuildingRowsInTable(
+	table: DefaultTreeAdapterMap["element"]
+): Array<DefaultTreeAdapterMap["element"]> {
+	let validRows: Array<DefaultTreeAdapterMap["element"]> = [];
+
+	function findRows(node: DefaultTreeAdapterMap["element"]) {
+		// console.log(node.nodeName);
+		if (node.nodeName === "tr" && isValidTableOrRow(node)) {
+			validRows.push(node);
+		} else if ("childNodes" in node) {
+			(node.childNodes as Array<DefaultTreeAdapterMap["element"]>).forEach(findRows);
+		}
+	}
+	findRows(table);
 	return validRows;
 }
 
-
-export function oneRowToBuilding(tr: DefaultTreeAdapterMap["childNode"]): Building {
-	let lat = 0;
-	let lon = 0;
-	let shortname: string | null = null;
-	let fullname: string | null = null;
-	let address: string | null = null;
-	let href: string | null = null;
-	function findText(node: DefaultTreeAdapterMap["childNode"]): string | null {
-		if ("childNodes" in node) {
-			const textNode = node.childNodes.find((child) => child.nodeName === "#text");
-			return textNode && "value" in textNode ? textNode.value.trim() : null;
-		}
-		return null;
-	}
-
+function extractAddress(tr: DefaultTreeAdapterMap["childNode"]): string {
+	let address = "";
 	if ("childNodes" in tr) {
-		for (let td of tr.childNodes) {
-			if ("attrs" in td) {
-				for (let attr of td.attrs) {
-					let result;
-					switch (attr.value) {
-						case "views-field views-field-nothing":
-							result = setFullNameHref(td);
-							href = result.href;
-							fullname = result.fullname;
-							break;
-						case "views-field views-field-field-building-address":
-							address = findText(td);
-							break;
-						case "views-field views-field-field-building-code":
-							shortname = findText(td);
-							break;
-					}
-					if (address && shortname && fullname && href) {
-						break;
-					}
-				}
-				if (address && shortname && fullname && href) {
-					break;
+		const addressNode = tr.childNodes.find((child) => {
+			return "attrs" in child && child.attrs.some((attr) =>
+				attr.value === "views-field views-field-field-building-address");
+		});
+		if (addressNode && "childNodes" in addressNode) {
+			const textNode = addressNode.childNodes[0];
+			if (textNode && textNode.nodeName === "#text" && "value" in textNode) {
+				address = textNode.value.trim();
+			}
+		}
+	}
+	return address;
+}
+
+function extractShortname(tr: DefaultTreeAdapterMap["childNode"]): string {
+	let shortname = "";
+	if ("childNodes" in tr) {
+		const codeNode = tr.childNodes.find((child) => {
+			return "attrs" in child && child.attrs.some((attr) =>
+				attr.value === "views-field views-field-field-building-code");
+		});
+		if (codeNode && "childNodes" in codeNode) {
+			const textNode = codeNode.childNodes[0];
+			if (textNode && textNode.nodeName === "#text" && "value" in textNode) {
+				shortname = textNode.value.trim();
+			}
+		}
+	}
+	return shortname;
+}
+
+function extractFullname(tr: DefaultTreeAdapterMap["childNode"]): string {
+	let fullname = "";
+	if ("childNodes" in tr) {
+		const titleNode = tr.childNodes.find((child) => {
+			return "attrs" in child && child.attrs.some((attr) => attr.value === "views-field views-field-title");
+		});
+		if (titleNode && "childNodes" in titleNode) {
+			const anchorNode = titleNode.childNodes.find((child) => child.nodeName === "a");
+			if (anchorNode && "childNodes" in anchorNode) {
+				const textNode = anchorNode.childNodes.find((child) => child.nodeName === "#text");
+				if (textNode && "value" in textNode) {
+					fullname = textNode.value.trim();
 				}
 			}
 		}
 	}
-
-	if (shortname && fullname && address && href) {
-		return new Building(lat, lon, fullname, shortname, address, href);
-	} else {
-		throw new Error("invalid building row");
-	}
+	return fullname;
 }
 
-
-export function jsonToBuilding(trs: Array<DefaultTreeAdapterMap["childNode"]>): Building[] {
-	let buildings: Building[] = [];
-	for (let tr of trs) {
-		let building: Building = oneRowToBuilding(tr);
-		buildings.push(building);
+function extractHref(tr: DefaultTreeAdapterMap["childNode"]): string {
+	let href = "";
+	if ("childNodes" in tr) {
+		const titleNode = tr.childNodes.find((child) => {
+			return "attrs" in child && child.attrs.some((attr) => attr.value === "views-field views-field-title");
+		});
+		if (titleNode && "childNodes" in titleNode) {
+			const anchorNode = titleNode.childNodes.find((child) => child.nodeName === "a");
+			if (anchorNode && "attrs" in anchorNode) {
+				const hrefAttr = anchorNode.attrs.find((attr) => attr.name === "href");
+				if (hrefAttr) {
+					href = hrefAttr.value;
+				}
+			}
+		}
 	}
-	return buildings;
+	return href;
 }
 
-export function isValidTableOrRow(child: DefaultTreeAdapterMap["childNode"]): boolean {
+export async function jsonToRooms(content: string, trs: Array<DefaultTreeAdapterMap["childNode"]>): Promise<Room[]> {
+	// console.log(trs);
+	const promises = trs.map((tr) => oneRowToRooms(content, tr));
+	const roomsLists = await Promise.all(promises);
+	let totalRooms: Room[] = roomsLists.flat();
+	return totalRooms;
+}
+export function isValidTableOrRow(child: DefaultTreeAdapterMap["element"]): boolean {
 	return hasShortName(child) && hasFullName(child) && hasAddress(child) && hasHref(child);
 }
 
@@ -179,7 +217,6 @@ export function hasFullName(child: DefaultTreeAdapterMap["childNode"]): boolean 
 			}
 		}
 	}
-
 	return false;
 }
 
