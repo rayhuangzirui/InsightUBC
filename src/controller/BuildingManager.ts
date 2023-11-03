@@ -15,6 +15,7 @@ import {
 	parseOneRoomData
 } from "./RoomsManager";
 import {Room} from "../model/Room";
+import {LOGIC} from "../QueryParsers/ClausesEnum";
 
 export async function parseBuildingData(content: string): Promise<Array<DefaultTreeAdapterMap["element"]>> {
 	let zip = new JSZip();
@@ -58,7 +59,7 @@ export async function oneRowToRooms(content: string, tr: DefaultTreeAdapterMap["
 	let shortname: string = extractShortname(tr);
 	let fullname: string = extractFullname(tr);
 	let bHref: string = extractHref(tr);
-
+	// console.log(address);
 	if (address) {
 		let geoResponse = await geoService.fetchGeolocation(address);
 		if (geoResponse.lat && geoResponse.lon) {

@@ -35,6 +35,7 @@ import {DefaultTreeAdapterMap} from "parse5";
  */
 export default class InsightFacade implements IInsightFacade {
 	private _currentAddedInsightDataset: InsightDataset[] = [];
+	private _currentAddedRoomsDataset: Room[][] = [];
 	private MAX_SIZE = 5000;
 	private _initialization: Promise<void>;
 	constructor() {
@@ -58,11 +59,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async addDataset(id: string, content: string, kind: InsightDatasetKind): Promise<string[]> {
-		/*		try {
-					await this._initialization;
-				} catch (e) {
-					return Promise.reject(new InsightError("init failed"));
-				}*/
+		try {
+			await this._initialization;
+		} catch (e) {
+			return Promise.reject(new InsightError("init failed"));
+		}
 		if (kind !== InsightDatasetKind.Sections && kind !== InsightDatasetKind.Rooms) {
 			return Promise.reject(new InsightError("Invalid kind"));
 		}
@@ -175,6 +176,11 @@ export default class InsightFacade implements IInsightFacade {
 
 	public async removeDataset(id: string): Promise<string> {
 		try {
+			await this._initialization;
+		} catch (e) {
+			return Promise.reject(new InsightError("init failed"));
+		}
+		try {
 			if (!isIdKindValid(id, InsightDatasetKind.Sections) && !isIdKindValid(id, InsightDatasetKind.Rooms)) {
 				return Promise.reject(new InsightError());
 			}
@@ -203,6 +209,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async listDatasets(): Promise<InsightDataset[]> {
+		try {
+			await this._initialization;
+		} catch (e) {
+			return Promise.reject(new InsightError("init failed"));
+		}
 		try {
 			return this._currentAddedInsightDataset;
 		} catch (error) {
@@ -245,11 +256,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
- /*		try {
+		try {
 			await this._initialization;
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
-		}*/
+		}
 		try {
 			let parsedQuery = parseQuery(query);
 			let idFromQuery = getIDsFromQuery(parsedQuery);
@@ -284,7 +295,6 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async ensureDirectoryExists(dataFolderPath: string) {
-		// await this._initialization;
 		await fs_extra.ensureDir(dataFolderPath);
 	}
 }
