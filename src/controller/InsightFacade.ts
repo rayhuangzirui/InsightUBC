@@ -51,11 +51,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	private async init() {
-		try {
+/*		try {
 			return await this.loadAddedDatasetFromDisk();
 		} catch (e) {
 			throw new InsightError("init failed");
-		}
+		}*/
 	}
 
 	public async addDataset(id: string, content: string, kind: InsightDatasetKind): Promise<string[]> {
@@ -133,7 +133,7 @@ export default class InsightFacade implements IInsightFacade {
 		let datasetToBeAdded: InsightDataset = {
 			id: id, kind: InsightDatasetKind.Rooms, numRows: roomCount,
 		};
-		console.log(datasetToBeAdded);
+		// console.log(datasetToBeAdded);
 		await this.writeRoomsToFile(id, content);
 		this._currentAddedInsightDataset.push(datasetToBeAdded);
 		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
