@@ -7,6 +7,7 @@ import * as fs from "fs";
 import * as fs_extra from "fs-extra";
 import * as fs_promises from "fs/promises";
 import QueryEngine from "./QueryEngine";
+import {DataInterface} from "./DataInterface";
 import {
 	isValidZip,
 	isIdKindValid,
@@ -64,8 +65,8 @@ export default class InsightFacade implements IInsightFacade {
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
 		}
-		if (kind !== InsightDatasetKind.Sections && kind !== InsightDatasetKind.Rooms) {
-			return Promise.reject(new InsightError("Invalid kind"));
+		if (!isIdKindValid(id, kind)) {
+			return Promise.reject(new InsightError());
 		}
 		if (this._currentAddedInsightDataset.map((dataset) => dataset.id).includes(id)) {
 			return Promise.reject(new InsightError("Dataset already exists"));
@@ -134,39 +135,27 @@ export default class InsightFacade implements IInsightFacade {
 			id: id, kind: InsightDatasetKind.Rooms, numRows: roomCount,
 		};
 		// console.log(datasetToBeAdded);
-		await this.writeRoomsToFile(id, content);
+		await this.writeRoomsToFile(id, content, roomCount);
 		this._currentAddedInsightDataset.push(datasetToBeAdded);
 		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
 	}
 
-	public async writeRoomsToFile(id: string, content: string): Promise<void> {
+	public async writeRoomsToFile(id: string, content: string, nRow: number): Promise<void> {
 		const pathToWrite = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
 		await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
 		let json = {
 			id: id,
-			data: content
+			data: content,
+			numRows: nRow
 		};
 
 		fs.writeFileSync(pathToWrite, JSON.stringify(json, null, 4), "utf8");
 	}
 
-
 	private async writeDataToFile(id: string, parsedData: any[]): Promise<void> {
 		try {
 			const pathToWrite = path.join(__dirname, "..", "..", "data", "Sections" + "_" + id + ".json");
 			let stringfiedData = JSON.stringify(parsedData, null, 2);
-			await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
-			await fs_promises.writeFile(pathToWrite, stringfiedData);
-		} catch (e) {
-			throw new InsightError("error writing to file");
-		}
-	}
-
-
-	private async writeBuildingsToFile(id: string, roomData: Room[]): Promise<void> {
-		try {
-			const stringfiedData = JSON.stringify(roomData, null, 2);
-			const pathToWrite = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
 			await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
 			await fs_promises.writeFile(pathToWrite, stringfiedData);
 		} catch (e) {
@@ -233,18 +222,19 @@ export default class InsightFacade implements IInsightFacade {
 				const stat = await fs_extra.stat(filePath);
 				if (stat.isFile()) {
 					const fileContent = await fs_extra.readFile(filePath, "utf8");
-					const parsedData = (JSON.parse(fileContent) as any[]);
 					if (file.startsWith("Sections")) {
+						const parsedData = JSON.parse(fileContent);
 						this._currentAddedInsightDataset.push({
 							id: file.split(".")[0].split("_")[1],
 							kind: InsightDatasetKind.Sections,
 							numRows: countRowNumSections(parsedData)
 						});
 					} else if (file.startsWith("Buildings")) {
+						const parsedData: DataInterface = JSON.parse(fileContent);
 						this._currentAddedInsightDataset.push({
-							id: file.split(".")[0].split("_")[1],
+							id: parsedData.id,
 							kind: InsightDatasetKind.Rooms,
-							numRows: countRowNumBuildings(parsedData)
+							numRows: parsedData.numRows
 						});
 					}
 				}
