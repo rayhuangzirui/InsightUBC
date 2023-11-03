@@ -225,11 +225,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
-/*		try {
+/* /!*		try {
 			await this._initialization;
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
-		}*/
+		}*!/
 		try {
 			let parsedQuery = parseQuery(query);
 			let idFromQuery = getIDsFromQuery(parsedQuery);
@@ -260,7 +260,8 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(error);
 			}
 			return Promise.reject(new InsightError("Invalid query"));
-		}
+		}*/
+		return Promise.reject(new InsightError("Invalid query"));
 	}
 
 	public async ensureDirectoryExists(dataFolderPath: string) {
