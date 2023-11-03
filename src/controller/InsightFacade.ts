@@ -1,4 +1,10 @@
-import {IInsightFacade, InsightDataset, InsightDatasetKind, InsightError, InsightResult, NotFoundError,
+import {
+	IInsightFacade,
+	InsightDataset,
+	InsightDatasetKind,
+	InsightError,
+	InsightResult,
+	NotFoundError,
 	ResultTooLargeError
 } from "./IInsightFacade";
 import JSZip from "jszip";
@@ -8,35 +14,18 @@ import * as fs_extra from "fs-extra";
 import * as fs_promises from "fs/promises";
 import QueryEngine from "./QueryEngine";
 import {DataInterface} from "./DataInterface";
-import {
-	isValidZip,
-	isIdKindValid,
-	countRowNumSections,
-	countRowNumBuildings,
-	countTotalRooms,
-	processZip
+import {countRowNumSections,countTotalRooms, isIdKindValid, isValidZip, jsonToSection, processZip
 } from "./InsightHelpers";
-import {findValidBuildingRowsInTable, parseBuildingData, updateLatLon} from "./BuildingManager";
 import * as building from "./BuildingManager";
-// import {DefaultTreeAdapterMap,serialize} from "parse5";
-import * as parse5 from "parse5";
-import * as rooms from "./RoomsManager";
-import {Building} from "../model/Building";
+import {parseBuildingData} from "./BuildingManager";
 import {parseQuery} from "../QueryParsers/QueryParser";
-import {getDatasetFromKind, getIDsFromQuery} from "../QueryParsers/Validators";
-import {findValidRoomRowsInTable} from "./RoomsManager";
+import {getDatasetFromKind, getIDsFromQuery, prepareForQuery} from "../QueryParsers/Validators";
 import {Room} from "../model/Room";
-import {writeFileSync} from "fs";
 import {DefaultTreeAdapterMap} from "parse5";
-
-/**
- * This is the main programmatic entry point for the project.
- * Method documentation is in IInsightFacade
- *
- */
+import {CacheList} from "./CacheList";
 export default class InsightFacade implements IInsightFacade {
 	private _currentAddedInsightDataset: InsightDataset[] = [];
-	private _currentAddedRoomsDataset: Room[][] = [];
+	private _currentAddedRoomsDataset: CacheList[] = [];
 	private MAX_SIZE = 5000;
 	private _initialization: Promise<void>;
 	constructor() {
@@ -121,20 +110,15 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	private async handleRoomsDataset(id: string, content: string): Promise<string[]> {
-		// return Promise.reject(new InsightError("failed to remove dataset"));
 		let parsedRoomsDataSet = await parseBuildingData(content);
 		let table = building.findBuildingTables(parsedRoomsDataSet);
 		if (!table) {
 			return Promise.reject(new InsightError("no table found"));
 		}
 		let roomCount = await countTotalRooms(content, await processZip(content, "index.htm"));
-		// let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
-		// let allRooms = await building.jsonToRooms(content, validRows);
-		// let rowCount = allRooms.length;
 		let datasetToBeAdded: InsightDataset = {
 			id: id, kind: InsightDatasetKind.Rooms, numRows: roomCount,
 		};
-		// console.log(datasetToBeAdded);
 		await this.writeRoomsToFile(id, content, roomCount);
 		this._currentAddedInsightDataset.push(datasetToBeAdded);
 		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
@@ -266,8 +250,13 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
 			}
 			let kind = dataList.find((dataset) => dataset.id === id)?.kind;
-			let dataset = await getDatasetFromKind(kind as InsightDatasetKind, id);
-			let queryEngine = new QueryEngine(dataset, query, kind as InsightDatasetKind);
+			let dataset;
+			if (kind === InsightDatasetKind.Rooms){
+				dataset = prepareForQuery(id);
+			}else if (kind === InsightDatasetKind.Sections){
+				dataset = await jsonToSection(id);
+			}
+			let queryEngine = new QueryEngine(dataset as any, query, kind as InsightDatasetKind);
 			let result: InsightResult[] = queryEngine.runEngine();
 			if (result.length > this.MAX_SIZE) {
 				console.log("The result is too big.");
@@ -281,6 +270,26 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(error);
 			}
 			return Promise.reject(new InsightError("Invalid query"));
+		}
+	}
+
+	public async  prepareForQuery(id: string): Promise<Room[]> {
+		const dataFilePath: string = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
+		const htmlString: string = await fs.promises.readFile(dataFilePath, {encoding: "utf8"});
+		const content = await JSON.parse(htmlString)["data"];
+		let parsedRoomsDataSet = await parseBuildingData(content);
+		let table = building.findBuildingTables(parsedRoomsDataSet);
+		let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
+		const datasetWithRooms = this._currentAddedRoomsDataset.find((dataset) => dataset.id === id);
+		console.log(this._currentAddedRoomsDataset.length);
+		if (datasetWithRooms) {
+			console.log("found dataset in cache");
+			return datasetWithRooms.rooms;
+		} else {
+			console.log("not found dataset in cache");
+			const rooms1 = await building.jsonToRooms(content, validRows);
+			this._currentAddedRoomsDataset.push({id: id, rooms: rooms1});
+			return rooms1;
 		}
 	}
 
