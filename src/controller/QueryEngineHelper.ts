@@ -124,12 +124,21 @@ export function calculateValueByToken(token: APPLYTOKEN, group: any[], comKey: s
 
 	switch(token) {
 		case "MAX":
+			if (group.map((entry) => entry[comKey]).some((value) => typeof value !== "number")) {
+				throw new InsightError("MAX token only applies to number");
+			}
 			result = Math.max(...group.map((entry) => entry[comKey]));
 			break;
 		case "MIN":
+			if (group.map((entry) => entry[comKey]).some((value) => typeof value !== "number")) {
+				throw new InsightError("MIN token only applies to number");
+			}
 			result = Math.min(...group.map((entry) => entry[comKey]));
 			break;
 		case "AVG":
+			if (group.map((entry) => entry[comKey]).some((value) => typeof value !== "number")) {
+				throw new InsightError("AVG token only applies to number");
+			}
 			total = new Decimal(0);
 			for(let entry of group) {
 				total = total.add(new Decimal(entry[comKey]));
@@ -141,6 +150,9 @@ export function calculateValueByToken(token: APPLYTOKEN, group: any[], comKey: s
 			result = new Set(group.map((entry) => entry[comKey])).size;
 			break;
 		case "SUM":
+			if (group.map((entry) => entry[comKey]).some((value) => typeof value !== "number")) {
+				throw new InsightError("SUM token only applies to number");
+			}
 			total = group.reduce((acc, entry) => acc + entry[comKey], 0);
 			result = Number(total.toFixed(2));
 			break;
