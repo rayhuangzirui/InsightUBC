@@ -289,3 +289,4 @@ export async function prepareForQuery(id: string): Promise<Room[]> {
 	let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
 	return  await building.jsonToRooms(content, validRows);
 }
+

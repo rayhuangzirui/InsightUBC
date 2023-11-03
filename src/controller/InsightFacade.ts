@@ -133,7 +133,7 @@ export default class InsightFacade implements IInsightFacade {
 		let datasetToBeAdded: InsightDataset = {
 			id: id, kind: InsightDatasetKind.Rooms, numRows: roomCount,
 		};
-		console.log(datasetToBeAdded);
+		// console.log(datasetToBeAdded);
 		await this.writeRoomsToFile(id, content);
 		this._currentAddedInsightDataset.push(datasetToBeAdded);
 		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
