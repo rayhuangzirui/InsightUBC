@@ -20,3 +20,4 @@ dist/*
 .DS_Store
 .env
 *.log
+test/controller/InsightFacade.spec.ts
