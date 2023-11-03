@@ -51,11 +51,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	private async init() {
-/*		try {
+		try {
 			return await this.loadAddedDatasetFromDisk();
 		} catch (e) {
 			throw new InsightError("init failed");
-		}*/
+		}
 	}
 
 	public async addDataset(id: string, content: string, kind: InsightDatasetKind): Promise<string[]> {
