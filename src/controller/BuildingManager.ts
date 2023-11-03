@@ -11,11 +11,9 @@ import {ifError} from "assert";
 import {
 	findRoomsTables,
 	findValidRoomRowsInTable,
-	oneRowToRoom,
 	oneRowToRoom2,
 	parseOneRoomData
 } from "./RoomsManager";
-import fs_promise from "fs/promises";
 import {Room} from "../model/Room";
 
 export async function parseBuildingData(content: string): Promise<Array<DefaultTreeAdapterMap["element"]>> {
@@ -39,7 +37,7 @@ export function findBuildingTables(
 	nodes: Array<DefaultTreeAdapterMap["element"]>
 ): DefaultTreeAdapterMap["element"] | null {
 	for (const node of nodes) {
-		if (node.tagName === "table") {
+		if (node.tagName === "table" && isValidTableOrRow(node)) {
 			return node;
 		}
 		const childNodes: Array<DefaultTreeAdapterMap["childNode"]> = node.childNodes || [];
@@ -88,7 +86,8 @@ export function findValidBuildingRowsInTable(
 	let validRows: Array<DefaultTreeAdapterMap["element"]> = [];
 
 	function findRows(node: DefaultTreeAdapterMap["element"]) {
-		if (node.tagName === "tr" && node.parentNode?.nodeName === "tbody" && isValidTableOrRow(node)) {
+		// console.log(node.nodeName);
+		if (node.nodeName === "tr" && isValidTableOrRow(node)) {
 			validRows.push(node);
 		} else if ("childNodes" in node) {
 			(node.childNodes as Array<DefaultTreeAdapterMap["element"]>).forEach(findRows);
@@ -171,10 +170,10 @@ function extractHref(tr: DefaultTreeAdapterMap["childNode"]): string {
 }
 
 export async function jsonToRooms(content: string, trs: Array<DefaultTreeAdapterMap["childNode"]>): Promise<Room[]> {
+	// console.log(trs);
 	const promises = trs.map((tr) => oneRowToRooms(content, tr));
 	const roomsLists = await Promise.all(promises);
 	let totalRooms: Room[] = roomsLists.flat();
-	console.log(totalRooms.length);
 	return totalRooms;
 }
 export function isValidTableOrRow(child: DefaultTreeAdapterMap["element"]): boolean {

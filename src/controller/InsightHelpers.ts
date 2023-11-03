@@ -60,6 +60,25 @@ export async function jsonToRooms(datasetId: string): Promise<Room[]> {
 	return  JSON.parse(datafileString);
 }
 
+/* export async function tableToRooms(datasetId: string): Promise<DefaultTreeAdapterMap["element"]> {
+	const dataFilePath = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + datasetId + ".json");
+	let datafileString: string = await fs_promise.readFile(dataFilePath, "utf8");
+	// datafileString = JSON.parse(datafileString);
+	let serilizedString =  parse5.serialize(JSON.parse(datafileString));
+	const document = parse5.parse(serilizedString);
+	return document.childNodes[0] as DefaultTreeAdapterMap["element"];
+}*/
+export async function tableToRooms(datasetId: string) {
+	const dataFilePath: string = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + datasetId + ".html");
+	const htmlString: string = await fs.promises.readFile(dataFilePath, {encoding: "utf8"});
+	const document = parse5.parse(htmlString);
+/*	if ("childNodes" in document.childNodes[0]) {
+		console.log(document.childNodes[0].childNodes[1]);
+	}*/
+	return document;
+}
+
+
 export function getAllRooms(buildings: Building[]): Room[] {
 	let allRooms: Room[] = [];
 	for (const b of buildings) {
@@ -163,19 +182,15 @@ export function countRowNumBuildings  (parsedData: any[]): number {
 	return rowNumber;
 }
 
-// parse the index.html to a dom-like tree
 export async function parseRoomData(content: string): Promise<Array<DefaultTreeAdapterMap["childNode"]>> {
 	let zip = new JSZip();
 	let indexContent;
 	let textContent;
 	await zip.loadAsync(content, {base64: true}).then(async function(contents) {
-		// 返回代表index.html文件对象
 		indexContent = contents.file("index.htm");
 		if (indexContent) {
-			// text string; content of index.html
 			textContent = await indexContent.async("text");
 			if (textContent) {
-				// return a document object, this object is similar to the DOM tree
 				return parse5.parse(textContent).childNodes;
 			}
 		} else {
@@ -188,50 +203,6 @@ export async function parseRoomData(content: string): Promise<Array<DefaultTreeA
 		throw new Error("Failed to parse the content.");
 	}
 }
-
-/*
-export async function loadAddedDatasetFromDisk(): Promise<void> {
-	try {
-		// to ensure the data folder exists
-		await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
-		const files = await fs_extra.promises.readdir(path.join(__dirname, "..", "..", "data"));
-		const filePromises = files.map(async (file) => {
-			if (file === ".gitkeep") {
-				return;
-			}
-			const filePath = path.join(__dirname, "..", "..", "data", file);
-			const stat = await fs_extra.stat(filePath);
-			if (stat.isFile()) {
-				const fileContent = await fs_extra.readFile(filePath, "utf8");
-				const parsedData = (JSON.parse(fileContent) as any[]);
-				if (file.startsWith("Sections")) {
-					this._currentAddedInsightDataset.push({
-						id: file.split(".")[0].split("_")[1],
-						kind: InsightDatasetKind.Sections,
-						numRows: countRowNumSections(parsedData)
-					});
-				} else if (file.startsWith("Buildings")) {
-					this._currentAddedInsightDataset.push({
-						// let pre_id = file.split("_")[1];
-						id: file.split(".")[0].split("_")[1],
-						kind: InsightDatasetKind.Rooms,
-						numRows: countRowNumBuildings(parsedData),
-					});
-				}
-			}
-		});
-
-		await Promise.all(filePromises);
-	} catch (e) {
-		throw new InsightError("error loading dataset from disk");
-	}
-}
-
-export async function ensureDirectoryExists(dataFolderPath: string) {
-	await this._initialization;
-	await fs_extra.ensureDir(dataFolderPath);
-}
-*/
 
 export async function processBuilding(
 	b: Building,
@@ -265,4 +236,65 @@ export function createTimeoutPromise(timeout: number, errorMessage: string): Pro
 	return new Promise<never>((_, reject) => {
 		setTimeout(() => reject(new InsightError(errorMessage)), timeout);
 	});
+}
+
+function extractAndTransformLinks(htmlContent: string): string[] {
+	const linkPattern = /\.\/campus\/discover\/buildings-and-classrooms\/(\w+)/g;
+	let match: RegExpExecArray | null;
+	const transformedLinks = [];
+	while ((match = linkPattern.exec(htmlContent)) !== null) {
+		transformedLinks.push(`campus/discover/buildings-and-classrooms/${match[1]}.htm`);
+	}
+
+	return transformedLinks;
+}
+
+export async function processZip(content: string, htmlFileName: string): Promise<string[]> {
+	try {
+		const zip = new JSZip();
+		await zip.loadAsync(Buffer.from(content, "base64"));
+		const htmlFile = zip.file(htmlFileName);
+		if (!htmlFile) {
+			throw new Error(`File "${htmlFileName}" does not exist in the ZIP archive.`);
+		}
+		const htmlContent = await htmlFile.async("string");
+		const links = extractAndTransformLinks(htmlContent);
+		const uniqueLinks = [...new Set(links)];
+		return uniqueLinks;
+	} catch (error) {
+		console.error("Error processing ZIP file:", error);
+		return [];
+	}
+}
+
+export function countRoomsInHtml(htmlContent: string) {
+	const firstRoomRegex = /<tr class="(?:odd|even) views-row-first(?:"| views-row-last")>/;
+	const lastRoomRegex = /<tr class="(?:odd|even) views-row-last">/;
+	const otherRoomsRegex = /<tr class="(?:odd|even)(?!.*views-row-first)(?!.*views-row-last)">/g;
+	const firstRoomMatch = firstRoomRegex.test(htmlContent) ? 1 : 0;
+	const lastRoomMatch = lastRoomRegex.test(htmlContent) ? 1 : 0;
+	const otherRoomsMatches = (htmlContent.match(otherRoomsRegex) || []).length;
+	return firstRoomMatch + lastRoomMatch + otherRoomsMatches;
+}
+
+export async function countTotalRooms(content: string, links: string[]): Promise<number> {
+	try {
+		const zip = new JSZip();
+		await zip.loadAsync(Buffer.from(content, "base64"));
+
+		const counts = await Promise.all(links.map(async (link) => {
+			const file = zip.file(link);
+			if (!file) {
+				throw new Error(`File "${link}" does not exist in the ZIP archive.`);
+			}
+
+			const htmlContent = await file.async("string");
+			return countRoomsInHtml(htmlContent);
+		}));
+
+		return counts.reduce((acc, count) => acc + count, 0);
+	} catch (error) {
+		console.error("Error counting rooms:", error);
+		return 0;
+	}
 }

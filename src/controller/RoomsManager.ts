@@ -1,8 +1,6 @@
 import {DefaultTreeAdapterMap} from "parse5";
 import JSZip from "jszip";
 import * as parse5 from "parse5";
-import fs from "fs";
-import * as fs_extra from "fs-extra";
 import {InsightError} from "./IInsightFacade";
 import {Room} from "../model/Room";
 import {Building} from "../model/Building";
@@ -276,15 +274,4 @@ function getAnchorTextValue(node: DefaultTreeAdapterMap["childNode"]):
 		}
 	}
 	return "";
-}
-
-export function rowsToRooms(rows: Array<DefaultTreeAdapterMap["childNode"]>, building: Building): Room[] {
-	let rooms: Room[] = [];
-	for (let row of rows) {
-		let room: Room| null = oneRowToRoom(row, building);
-		if (room) {
-			rooms.push(room);
-		}
-	}
-	return rooms;
 }

@@ -12,16 +12,21 @@ import {
 	isIdKindValid,
 	countRowNumSections,
 	countRowNumBuildings,
+	countTotalRooms,
+	processZip
 } from "./InsightHelpers";
 import {findValidBuildingRowsInTable, parseBuildingData, updateLatLon} from "./BuildingManager";
 import * as building from "./BuildingManager";
-import {DefaultTreeAdapterMap} from "parse5";
+// import {DefaultTreeAdapterMap,serialize} from "parse5";
+import * as parse5 from "parse5";
 import * as rooms from "./RoomsManager";
 import {Building} from "../model/Building";
 import {parseQuery} from "../QueryParsers/QueryParser";
 import {getDatasetFromKind, getIDsFromQuery} from "../QueryParsers/Validators";
 import {findValidRoomRowsInTable} from "./RoomsManager";
 import {Room} from "../model/Room";
+import {writeFileSync} from "fs";
+import {DefaultTreeAdapterMap} from "parse5";
 
 /**
  * This is the main programmatic entry point for the project.
@@ -120,16 +125,40 @@ export default class InsightFacade implements IInsightFacade {
 		if (!table) {
 			return Promise.reject(new InsightError("no table found"));
 		}
-		let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
-		let allRooms = await building.jsonToRooms(content, validRows);
-		let rowCount = 0;
+		let roomCount = await countTotalRooms(content, await processZip(content, "index.htm"));
+		// let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
+		// let allRooms = await building.jsonToRooms(content, validRows);
+		// let rowCount = allRooms.length;
 		let datasetToBeAdded: InsightDataset = {
-			id: id, kind: InsightDatasetKind.Rooms, numRows: rowCount,
+			id: id, kind: InsightDatasetKind.Rooms, numRows: roomCount,
 		};
-		await this.writeBuildingsToFile(id, allRooms);
+		console.log(datasetToBeAdded);
+		await this.writeRoomsToFile(id, content);
 		this._currentAddedInsightDataset.push(datasetToBeAdded);
 		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
 	}
+
+	public async prepareForQuery(id: string): Promise<Room[]> {
+		const dataFilePath: string = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
+		const htmlString: string = await fs.promises.readFile(dataFilePath, {encoding: "utf8"});
+		const content = await JSON.parse(htmlString)["data"];
+		let parsedRoomsDataSet = await parseBuildingData(content);
+		let table = building.findBuildingTables(parsedRoomsDataSet);
+		let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
+		return  await building.jsonToRooms(content, validRows);
+	}
+
+	public async writeRoomsToFile(id: string, content: string): Promise<void> {
+		const pathToWrite = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
+		await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
+		let json = {
+			id: id,
+			data: content
+		};
+
+		fs.writeFileSync(pathToWrite, JSON.stringify(json, null, 4), "utf8");
+	}
+
 
 	private async writeDataToFile(id: string, parsedData: any[]): Promise<void> {
 		try {
@@ -141,6 +170,7 @@ export default class InsightFacade implements IInsightFacade {
 			throw new InsightError("error writing to file");
 		}
 	}
+
 
 	private async writeBuildingsToFile(id: string, roomData: Room[]): Promise<void> {
 		try {
@@ -225,11 +255,11 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async performQuery(query: unknown): Promise<InsightResult[]> {
-/* /!*		try {
+ /*		try {
 			await this._initialization;
 		} catch (e) {
 			return Promise.reject(new InsightError("init failed"));
-		}*!/
+		}*/
 		try {
 			let parsedQuery = parseQuery(query);
 			let idFromQuery = getIDsFromQuery(parsedQuery);
@@ -260,8 +290,7 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(error);
 			}
 			return Promise.reject(new InsightError("Invalid query"));
-		}*/
-		return Promise.reject(new InsightError("Invalid query"));
+		}
 	}
 
 	public async ensureDirectoryExists(dataFolderPath: string) {
