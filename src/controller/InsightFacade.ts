@@ -28,6 +28,7 @@ import {findValidRoomRowsInTable} from "./RoomsManager";
 import {Room} from "../model/Room";
 import {writeFileSync} from "fs";
 import {DefaultTreeAdapterMap} from "parse5";
+import {validateFieldWithKind} from "./QueryEngineHelper";
 
 /**
  * This is the main programmatic entry point for the project.
@@ -266,8 +267,9 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
 			}
 			let kind = dataList.find((dataset) => dataset.id === id)?.kind;
+			validateFieldWithKind(parsedQuery, kind as InsightDatasetKind);
 			let dataset = await getDatasetFromKind(kind as InsightDatasetKind, id);
-			let queryEngine = new QueryEngine(dataset, query, kind as InsightDatasetKind);
+			let queryEngine = new QueryEngine(dataset, query);
 			let result: InsightResult[] = queryEngine.runEngine();
 			if (result.length > this.MAX_SIZE) {
 				console.log("The result is too big.");

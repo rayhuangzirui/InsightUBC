@@ -32,42 +32,35 @@ export const fieldMap: {[key in Mfield | Sfield]: string} = {
 	href: "_href",
 };
 
-export function filterHelper(entry: any, filter: FILTER, kind: InsightDatasetKind): boolean {
+export function filterHelper(entry: any, filter: FILTER): boolean {
 	if (filter.logicComp) {
-		return logicComHelper(entry, filter.logicComp, kind);
+		return logicComHelper(entry, filter.logicComp);
 	} else if (filter.mComp) {
-		return mComHelper(entry, filter.mComp, kind);
+		return mComHelper(entry, filter.mComp);
 	} else if (filter.sComp) {
-		return sComHelper(entry, filter.sComp, kind);
+		return sComHelper(entry, filter.sComp);
 	} else if (filter.negation) {
-		return !filterHelper(entry, filter.negation.filter, kind);
+		return !filterHelper(entry, filter.negation.filter);
 	} else {
     // No matched return true to the entry
 		return true;
 	}
 }
 
-function logicComHelper(entry: any, logicCom: LOGICCOMPARISON, kind: InsightDatasetKind): boolean {
+function logicComHelper(entry: any, logicCom: LOGICCOMPARISON): boolean {
 	if (logicCom.logic === LOGIC.AND) {
-		return logicCom.filter_list.every((innerFilter) => filterHelper(entry, innerFilter, kind));
+		return logicCom.filter_list.every((innerFilter) => filterHelper(entry, innerFilter));
 	} else if (logicCom.logic === LOGIC.OR) {
-		return logicCom.filter_list.some((innerFilter) => filterHelper(entry, innerFilter, kind));
+		return logicCom.filter_list.some((innerFilter) => filterHelper(entry, innerFilter));
 	} else {
 		return true;
 	}
 }
-function mComHelper(entry: any, mCom: MCOMPARISON, kind: InsightDatasetKind): boolean {
+function mComHelper(entry: any, mCom: MCOMPARISON): boolean {
 	const mappedField = fieldMap[mCom.mkey.field];
 
 	// For other fields, use the original logic
 	let mfieldEntry = entry[mappedField];
-	if (kind === InsightDatasetKind.Rooms && isFieldForSections(mappedField)) {
-		throw new InsightError("Cannot compare " + mappedField + " in Rooms dataset");
-	}
-
-	if (kind === InsightDatasetKind.Sections && isFieldForRooms(mappedField)) {
-		throw new InsightError("Cannot compare " + mappedField + " in Sections dataset");
-	}
 	return compare(mfieldEntry, mCom.mcomparator, mCom.num);
 }
 
@@ -85,16 +78,9 @@ function compare(value: number, comparator: MCOMPARATOR, num: number): boolean {
 }
 
 
-function sComHelper(entry: any, sCom: SCOMPARISON, kind: InsightDatasetKind): boolean {
+function sComHelper(entry: any, sCom: SCOMPARISON): boolean {
 	const mappedField = fieldMap[sCom.skey.field];
 	let sfieldEntry = entry[mappedField];
-	if (kind === InsightDatasetKind.Rooms && isFieldForSections(mappedField)) {
-		throw new InsightError("Cannot compare " + mappedField + " in Rooms dataset");
-	}
-
-	if (kind === InsightDatasetKind.Sections && isFieldForRooms(mappedField)) {
-		throw new InsightError("Cannot compare " + mappedField + " in Sections dataset");
-	}
 	return isStringMatch(sfieldEntry, sCom.inputstring);
 }
 
@@ -111,7 +97,7 @@ function isStringMatch(fieldValue: string, pattern: string): boolean {
 	return fieldValue === pattern;
 }
 
-export function selectColumnsHelper(entry: any, keys: ANYKEY[], kind: InsightDatasetKind): any {
+export function selectColumnsHelper(entry: any, keys: ANYKEY[]): any {
 	let projectedEntry: any = {};
 	for (let key of keys) {
 		let comKey;
@@ -122,13 +108,6 @@ export function selectColumnsHelper(entry: any, keys: ANYKEY[], kind: InsightDat
 		} else {
 			comKey = `${key.idstring}_${key.field}`;
 			let mappedKey = fieldMap[key.field];
-			if (kind === InsightDatasetKind.Rooms && isFieldForSections(mappedKey)) {
-				throw new InsightError("Cannot compare " + mappedKey + " in Rooms dataset");
-			}
-
-			if (kind === InsightDatasetKind.Sections && isFieldForRooms(mappedKey)) {
-				throw new InsightError("Cannot compare " + mappedKey + " in Sections dataset");
-			}
 			if (!isValidField(mappedKey, entry[mappedKey])) {
 				return {};
 			}
@@ -175,5 +154,82 @@ export function calculateValueByToken(token: APPLYTOKEN, group: any[], comKey: s
 
 export function constructGroupKey(entry: any, keys: Key[]): string {
 	return keys.map((key) => entry[fieldMap[key.field]]).join("");
+}
+
+export function validateFieldWithKind(query: any, kind: InsightDatasetKind): boolean {
+	let keys: ANYKEY[] = [];
+	if (query.options) {
+		if (query.options.columns && query.options.columns.anykey_list) {
+			keys = query.options.columns.anykey_list;
+			for (let key of keys) {
+				if (typeof key === "string") {
+					continue;
+				} else {
+					let mappedKey = fieldMap[key.field];
+					kindFieldValidate(kind, mappedKey);
+				}
+			}
+		}
+	}
+	if (query.body.filter) {
+		filterFieldValidate(query.body.filter, kind);
+	}
+	if (query.transformations) {
+		if (query.transformations.group) {
+			let keysInGroup: Key[] = query.transformations.group.keys;
+			for (let key of keysInGroup) {
+				let mappedKey = fieldMap[key.field];
+				kindFieldValidate(kind, mappedKey);
+			}
+		}
+		if (query.transformations.apply) {
+			for (let applyRule of query.transformations.apply) {
+				let key: Key = applyRule.key;
+				let mappedKey = fieldMap[key.field];
+				kindFieldValidate(kind, mappedKey);
+			}
+		}
+	}
+	return true;
+}
+
+export function filterFieldValidate(filter: FILTER, kind: InsightDatasetKind): boolean {
+	if (filter.logicComp) {
+		return logicComFieldValidate(filter.logicComp, kind);
+	} else if (filter.mComp) {
+		return mComFieldValidate(filter.mComp, kind);
+	} else if (filter.sComp) {
+		return sComFieldValidate(filter.sComp, kind);
+	} else if (filter.negation) {
+		return filterFieldValidate(filter.negation.filter, kind);
+	} else {
+		return true;
+	}
+}
+
+export function logicComFieldValidate(logicCom: LOGICCOMPARISON, kind: InsightDatasetKind): boolean {
+	return logicCom.filter_list.every((innerFilter) => filterFieldValidate(innerFilter, kind));
+}
+
+export function mComFieldValidate(mCom: MCOMPARISON, kind: InsightDatasetKind): boolean {
+	const mappedField = fieldMap[mCom.mkey.field];
+	kindFieldValidate(kind, mappedField);
+	return true;
+}
+
+export function sComFieldValidate(sCom: SCOMPARISON, kind: InsightDatasetKind): boolean {
+	const mappedField = fieldMap[sCom.skey.field];
+	kindFieldValidate(kind, mappedField);
+	return true;
+}
+
+export function kindFieldValidate(kind: InsightDatasetKind, mappedField: string): void {
+	if (kind === InsightDatasetKind.Rooms && isFieldForSections(mappedField)) {
+		throw new InsightError("Cannot compare " + mappedField + " in Rooms dataset");
+	}
+
+	if (kind === InsightDatasetKind.Sections && isFieldForRooms(mappedField)) {
+		throw new InsightError("Cannot compare " + mappedField + " in Sections dataset");
+	}
 }
 
