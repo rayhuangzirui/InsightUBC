@@ -2,6 +2,7 @@ import {APPLYRULE, FILTER, Key} from "./QueryInterfaces";
 import {Mfield, Sfield} from "./ClausesEnum";
 import {InsightDatasetKind, InsightError} from "../controller/IInsightFacade";
 import {jsonToRooms,jsonToSection} from "../controller/InsightHelpers";
+import {prepareForQuery} from "../controller/RoomsManager";
 
 export function IDValidator (id: string): boolean {
 	if (id.includes("_")) {
@@ -174,7 +175,7 @@ export async function getDatasetFromKind(kind: InsightDatasetKind, id: string): 
 		case InsightDatasetKind.Sections:
 			return await jsonToSection(id);
 		case InsightDatasetKind.Rooms:
-			return await jsonToRooms(id);
+			return await prepareForQuery(id);
 		default:
 			throw new InsightError("No dataset found with the given ID and kind");
 	}

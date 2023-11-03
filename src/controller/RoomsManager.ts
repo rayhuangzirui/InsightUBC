@@ -4,11 +4,15 @@ import * as parse5 from "parse5";
 import {InsightError} from "./IInsightFacade";
 import {Room} from "../model/Room";
 import {Building} from "../model/Building";
+import path from "path";
+import fs from "fs";
+import {parseBuildingData} from "./BuildingManager";
+import * as building from "./BuildingManager";
 
-export async function parseOneRoomData(content: string,path: string) {
+export async function parseOneRoomData(content: string, filePath: string) {
 	let zip = new JSZip();
 	await zip.loadAsync(content, {base64: true});
-	let fileContent = zip.file(path);
+	let fileContent = zip.file(filePath);
 	if (!fileContent) {
 		throw new InsightError("no room html in zip");
 	}
@@ -147,7 +151,7 @@ export function hasRoomFurniture(child: DefaultTreeAdapterMap["childNode"]): boo
 	}
 	return false;
 }
-export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: Building): Room | null {
+export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], b: Building): Room | null {
 	let roomNumber: string = "";
 	let roomName: string = "";
 	let seats: number  = 0;
@@ -178,7 +182,7 @@ export function oneRowToRoom(tr: DefaultTreeAdapterMap["childNode"], building: B
 			}
 		}
 	}
-	roomName = building.getShortname() + "_" + roomNumber;
+	roomName = b.getShortname() + "_" + roomNumber;
 	let room = new Room(roomNumber, roomName, seats, type, furniture, href);
 	return room;
 }
@@ -274,4 +278,14 @@ function getAnchorTextValue(node: DefaultTreeAdapterMap["childNode"]):
 		}
 	}
 	return "";
+}
+
+export async function prepareForQuery(id: string): Promise<Room[]> {
+	const dataFilePath: string = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
+	const htmlString: string = await fs.promises.readFile(dataFilePath, {encoding: "utf8"});
+	const content = await JSON.parse(htmlString)["data"];
+	let parsedRoomsDataSet = await parseBuildingData(content);
+	let table = building.findBuildingTables(parsedRoomsDataSet);
+	let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
+	return  await building.jsonToRooms(content, validRows);
 }

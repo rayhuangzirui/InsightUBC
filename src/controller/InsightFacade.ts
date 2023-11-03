@@ -138,16 +138,6 @@ export default class InsightFacade implements IInsightFacade {
 		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
 	}
 
-	public async prepareForQuery(id: string): Promise<Room[]> {
-		const dataFilePath: string = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
-		const htmlString: string = await fs.promises.readFile(dataFilePath, {encoding: "utf8"});
-		const content = await JSON.parse(htmlString)["data"];
-		let parsedRoomsDataSet = await parseBuildingData(content);
-		let table = building.findBuildingTables(parsedRoomsDataSet);
-		let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
-		return  await building.jsonToRooms(content, validRows);
-	}
-
 	public async writeRoomsToFile(id: string, content: string): Promise<void> {
 		const pathToWrite = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
 		await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
