@@ -120,7 +120,7 @@ export function parseApplyRule(applyRule: any): APPLYRULE {
 	let applyTokenObject = applyRule[applyKey];
 
   // Check if applyToken is an object
-	if (!isValidObject(applyTokenObject)) {
+	if (!isValidObject(applyTokenObject) || Array.isArray(applyTokenObject)) {
 		throw new InsightError("APPLYRULE must have an object as its value");
 	}
 
@@ -138,13 +138,8 @@ export function parseApplyRule(applyRule: any): APPLYRULE {
 	}
 
 	let applyTokenKey = applyTokenObject[applyToken];
-	if (typeof applyTokenKey === "string" && isValidApplyKey(applyTokenKey)) {
+	if (typeof applyTokenKey !== "string" || !applyTokenKey) {
 		throw new InsightError("Invalid APPLYRULE target key: " + applyTokenKey);
-	}
-
-  // Check if applyTokenValue is a valid string
-	if (!isValidString(applyTokenKey)) {
-		throw new InsightError("APPLYRULE key must be a string");
 	}
 
 	return {
