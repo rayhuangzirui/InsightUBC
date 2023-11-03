@@ -279,14 +279,3 @@ function getAnchorTextValue(node: DefaultTreeAdapterMap["childNode"]):
 	}
 	return "";
 }
-
-export async function prepareForQuery(id: string): Promise<Room[]> {
-	const dataFilePath: string = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
-	const htmlString: string = await fs.promises.readFile(dataFilePath, {encoding: "utf8"});
-	const content = await JSON.parse(htmlString)["data"];
-	let parsedRoomsDataSet = await parseBuildingData(content);
-	let table = building.findBuildingTables(parsedRoomsDataSet);
-	let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
-	return  await building.jsonToRooms(content, validRows);
-}
-
