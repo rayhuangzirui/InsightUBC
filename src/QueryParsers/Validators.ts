@@ -1,8 +1,15 @@
 import {APPLYRULE, FILTER, Key} from "./QueryInterfaces";
-import {Mfield, Sfield} from "./ClausesEnum";
+import {LOGIC, Mfield, Sfield} from "./ClausesEnum";
 import {InsightDatasetKind, InsightError} from "../controller/IInsightFacade";
 import {jsonToRooms,jsonToSection} from "../controller/InsightHelpers";
-import {prepareForQuery} from "../controller/RoomsManager";
+import {CacheList} from "../controller/CacheList";
+import {Room} from "../model/Room";
+import path from "path";
+import fs from "fs";
+import {parseBuildingData} from "../controller/BuildingManager";
+import * as building from "../controller/BuildingManager";
+import {DefaultTreeAdapterMap} from "parse5";
+import InsightFacade from "../controller/InsightFacade";
 
 export function IDValidator (id: string): boolean {
 	if (id.includes("_")) {
@@ -13,6 +20,8 @@ export function IDValidator (id: string): boolean {
 
 	return true;
 }
+
+let currentAddedRoomsDataset: CacheList[] = new Array<CacheList>();
 
 export function inputStringValidator(inputString: string): boolean {
 	if (inputString.includes("*")) {
@@ -170,14 +179,38 @@ export function isEmptyArray(arr: any): boolean {
 	return arr.length === 0;
 }
 
-export async function getDatasetFromKind(kind: InsightDatasetKind, id: string): Promise<any>{
+export async function getDatasetFromKind(facade: InsightFacade,  kind: InsightDatasetKind, id: string): Promise<any>{
 	switch (kind) {
 		case InsightDatasetKind.Sections:
 			return await jsonToSection(id);
 		case InsightDatasetKind.Rooms:
-			return await prepareForQuery(id);
+			return await facade.prepareForQuery(id);
 		default:
 			throw new InsightError("No dataset found with the given ID and kind");
+	}
+}
+
+export async function prepareForQuery(id: string): Promise<Room[]> {
+	const dataFilePath: string = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
+	const htmlString: string = await fs.promises.readFile(dataFilePath, {encoding: "utf8"});
+	const content = await JSON.parse(htmlString)["data"];
+	let parsedRoomsDataSet = await parseBuildingData(content);
+	let table = building.findBuildingTables(parsedRoomsDataSet);
+	let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
+	const datasetWithRooms = currentAddedRoomsDataset.find((dataset) => dataset.id === id);
+/*	if (currentAddedRoomsDataset.length > 0) {
+		console.log("hiiii" + currentAddedRoomsDataset[0].id);
+	}*/
+	console.log(currentAddedRoomsDataset.length);
+	if (datasetWithRooms) {
+		console.log("found dataset in cache");
+		return datasetWithRooms.rooms;
+	} else {
+		console.log("not found dataset in cache");
+		const rooms1 = await building.jsonToRooms(content, validRows);
+		currentAddedRoomsDataset.push({id: id, rooms: rooms1});
+		// console.log(currentAddedRoomsDataset.length);
+		return rooms1;
 	}
 }
 
