@@ -19,12 +19,10 @@ import {InsightDatasetKind, InsightError} from "./IInsightFacade";
 export default class QueryEngine {
 	public dataset: any[];
 	public query: Query;
-	public kind: InsightDatasetKind;
 
-	constructor(dataset: any[], inputQuery: any, kind: InsightDatasetKind) {
+	constructor(dataset: any[], inputQuery: any) {
 		this.dataset = dataset;
 		this.query = parseQuery(inputQuery);
-		this.kind = kind;
 	}
 
 	public getFilter(): FILTER {
@@ -59,7 +57,7 @@ export default class QueryEngine {
 			return this.dataset;
 		}
 
-		return this.dataset.filter((entry) => filterHelper(entry, filter, this.kind));
+		return this.dataset.filter((entry) => filterHelper(entry, filter));
 	}
 
 	private selectColumns(dataset: any[]): any[] {
@@ -86,7 +84,7 @@ export default class QueryEngine {
 			}
 		}
 
-		const mappedDataset = dataset.map((entry) => selectColumnsHelper(entry, columnKeys, this.kind));
+		const mappedDataset = dataset.map((entry) => selectColumnsHelper(entry, columnKeys));
 		return mappedDataset.filter((entry) => Object.keys(entry).length > 0);
 	}
 
@@ -123,7 +121,6 @@ export default class QueryEngine {
 		} else if ("dir" in order && "keys" in order) {
 			const {dir, keys} = order;
 			return dataset.sort((a, b) => {
-				// sorting
 				for (let key of keys) {
 					let comparison = compareByKey(a, b, key);
 					if (comparison !== 0) {
@@ -176,13 +173,6 @@ export default class QueryEngine {
 			return transformations.apply.reduce(
 				(entry: any, applyRule: APPLYRULE) => {
 					const mappedKey = fieldMap[applyRule.key.field];
-					if (this.kind === InsightDatasetKind.Rooms && isFieldForSections(mappedKey)) {
-						throw new InsightError("Cannot compare " + mappedKey + " in Rooms dataset");
-					}
-
-					if (this.kind === InsightDatasetKind.Sections && isFieldForRooms(mappedKey)) {
-						throw new InsightError("Cannot compare " + mappedKey + " in Sections dataset");
-					}
 					entry[applyRule.applykey] = calculateValueByToken(applyRule.applytoken, group, mappedKey);
 					return entry;
 				},

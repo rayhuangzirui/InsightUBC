@@ -1,11 +1,5 @@
-import {
-	IInsightFacade,
-	InsightDataset,
-	InsightDatasetKind,
-	InsightError,
-	InsightResult,
-	NotFoundError,
-	ResultTooLargeError
+import {IInsightFacade, InsightDataset, InsightDatasetKind,
+	InsightError, InsightResult, NotFoundError, ResultTooLargeError
 } from "./IInsightFacade";
 import JSZip from "jszip";
 import path from "path";
@@ -23,6 +17,8 @@ import {getDatasetFromKind, getIDsFromQuery, prepareForQuery} from "../QueryPars
 import {Room} from "../model/Room";
 import {DefaultTreeAdapterMap} from "parse5";
 import {CacheList} from "./CacheList";
+import {validateFieldWithKind} from "./QueryEngineHelper";
+
 export default class InsightFacade implements IInsightFacade {
 	private _currentAddedInsightDataset: InsightDataset[] = [];
 	private _currentAddedRoomsDataset: CacheList[] = [];
@@ -250,13 +246,14 @@ export default class InsightFacade implements IInsightFacade {
 				return Promise.reject(new InsightError("Dataset " + id + " does not exist"));
 			}
 			let kind = dataList.find((dataset) => dataset.id === id)?.kind;
+			validateFieldWithKind(parsedQuery, kind as InsightDatasetKind);
 			let dataset;
 			if (kind === InsightDatasetKind.Rooms){
-				dataset = prepareForQuery(id);
+				dataset = await this.prepareForQuery(id);
 			}else if (kind === InsightDatasetKind.Sections){
 				dataset = await jsonToSection(id);
 			}
-			let queryEngine = new QueryEngine(dataset as any, query, kind as InsightDatasetKind);
+			let queryEngine = new QueryEngine(dataset as any, query);
 			let result: InsightResult[] = queryEngine.runEngine();
 			if (result.length > this.MAX_SIZE) {
 				console.log("The result is too big.");
