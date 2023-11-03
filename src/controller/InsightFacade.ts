@@ -252,6 +252,9 @@ export default class InsightFacade implements IInsightFacade {
 				dataset = await this.prepareForQuery(id);
 			}else if (kind === InsightDatasetKind.Sections){
 				dataset = await jsonToSection(id);
+			} else {
+				console.log("Invalid kind");
+				return Promise.reject(new InsightError("Invalid kind"));
 			}
 			let queryEngine = new QueryEngine(dataset as any, query);
 			let result: InsightResult[] = queryEngine.runEngine();

@@ -46,6 +46,9 @@ export async function jsonToSection(datasetId: string): Promise<Section[]> {
 				section.Avg, section.Professor, section.Title,
 				section.Pass, section.Fail, section.Audit,
 				String(section.id), Number(section.Year));
+			if (section.Section === "overall") {
+				testsection.year = 1900;
+			}
 			sectionArray.push(testsection);
 		}
 		return sectionArray;
@@ -59,7 +62,6 @@ export async function jsonToRooms(datasetId: string): Promise<Room[]> {
 	let datafileString: string = await fs_promise.readFile(dataFilePath, "utf8");
 	return  JSON.parse(datafileString);
 }
-
 /* export async function tableToRooms(datasetId: string): Promise<DefaultTreeAdapterMap["element"]> {
 	const dataFilePath = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + datasetId + ".json");
 	let datafileString: string = await fs_promise.readFile(dataFilePath, "utf8");
@@ -77,7 +79,6 @@ export async function tableToRooms(datasetId: string) {
 	}*/
 	return document;
 }
-
 
 export function getAllRooms(buildings: Building[]): Room[] {
 	let allRooms: Room[] = [];
@@ -281,7 +282,6 @@ export async function countTotalRooms(content: string, links: string[]): Promise
 	try {
 		const zip = new JSZip();
 		await zip.loadAsync(Buffer.from(content, "base64"));
-
 		const counts = await Promise.all(links.map(async (link) => {
 			const file = zip.file(link);
 			if (!file) {
