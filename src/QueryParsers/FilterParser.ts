@@ -85,10 +85,13 @@ export function parseMComparison(mCom: any): MCOMPARISON {
 
 	let mComValue = mCom[mComparator];
 	if (!isValidObject(mComValue)) {
-		throw new InsightError(mComparator + " has invalid key");
+		throw new InsightError(mComparator + " must be an object");
 	}
 
 	let mKey = Object.keys(mComValue)[0];
+	if (!mKey || typeof mKey !== "string") {
+		throw new InsightError(mKey + " must be a string");
+	}
 	let num = mComValue[mKey];
 
 	if (typeof num !== "number") {
@@ -112,10 +115,13 @@ export function parseSComparison(sCom: any): SCOMPARISON {
 	let sComValue = sCom[sComparator];
 
 	if (!sComValue || typeof sComValue !== "object") {
-		throw new InsightError(sComValue + " has invalid key");
+		throw new InsightError(sComValue + " must be an object");
 	}
 
 	let skey = Object.keys(sComValue)[0];
+	if (!skey || typeof skey !== "string") {
+		throw new InsightError(skey + " must be a string");
+	}
 	let inputstring = sComValue[skey];
 
 	if (typeof inputstring !== "string") {
@@ -141,9 +147,10 @@ export function parseNegation(negation: any): NEGATION {
 
 	let notValue = negation[not]; // filter
 
-	if (!isValidObject(notValue)) {
-		throw new InsightError(not + " has invalid key");
+	if (!isValidObject(notValue) || Array.isArray(notValue)) {
+		throw new InsightError(not + " must be an object");
 	}
+
 	let filter = parseFilter(notValue);
 	return {
 		NOT: not as NOT,

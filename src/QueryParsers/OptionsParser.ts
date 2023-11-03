@@ -71,6 +71,9 @@ export function parseOrder(order: any, key_list: ANYKEY[]): ORDER {
 			anykey: parseKey(order),
 		};
 	} else if (isValidObject(order) && !Array.isArray(order)) {
+		if (Object.keys(order).length !== 2) {
+			throw new InsightError("ORDER must have 1 or 2 keys, has " + Object.keys(order).length);
+		}
 		const validClause = ["dir", "keys"];
 		const orderClause = Object.keys(order);
 
