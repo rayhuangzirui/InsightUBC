@@ -66,15 +66,15 @@ export async function oneRowToRooms(content: string, tr: DefaultTreeAdapterMap["
 			lon = geoResponse.lon;
 		}
 	}
-	// console.log("hhhh" + bHref);
-	// console.log("lat: " + lat + " lon: " + lon + " address: " + address + " shortname: " + shortname + " fullname: " + fullname + " href: " + bHref);
 	let room = await parseOneRoomData(content, bHref.slice(2));
-	let roomTable = findRoomsTables(room) as DefaultTreeAdapterMap["element"];
-	let trs = findValidRoomRowsInTable(roomTable);
-	for (let row of trs) {
-		let aroom = oneRowToRoom2(row, lat, lon, fullname, shortname, address);
-		if (aroom) {
-			roomList.push(aroom);
+	if (room) {
+		let roomTable = findRoomsTables(room) as DefaultTreeAdapterMap["element"];
+		let trs = findValidRoomRowsInTable(roomTable);
+		for (let row of trs) {
+			let aroom = oneRowToRoom2(row, lat, lon, fullname, shortname, address);
+			if (aroom) {
+				roomList.push(aroom);
+			}
 		}
 	}
 

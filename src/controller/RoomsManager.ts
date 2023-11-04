@@ -12,20 +12,27 @@ import * as building from "./BuildingManager";
 export async function parseOneRoomData(content: string, filePath: string) {
 	let zip = new JSZip();
 	await zip.loadAsync(content, {base64: true});
+	// console.log(filePath);
 	let fileContent = zip.file(filePath);
-	if (!fileContent) {
-		throw new InsightError("no room html in zip");
-	}
+	/* if (!fileContent) {
+	  throw new InsightError("no room html in zip");
+	 }*/
 	let textContent = "";
 	try {
-		textContent = await fileContent.async("text");
-		if (!textContent) {
-			throw new InsightError("no room html in zip");
+		if (fileContent) {
+			textContent = await fileContent.async("text");
 		}
+		/*  if (!textContent) {
+		   throw new InsightError("no room html in zip");
+		  }*/
 	} catch (error) {
 		throw new InsightError("parsing room failed");
 	}
-	return parse5.parse(textContent).childNodes;
+	if (textContent) {
+		return parse5.parse(textContent).childNodes;
+	} else {
+		return null;
+	}
 }
 
 export function findRoomsTables(
