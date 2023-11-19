@@ -111,12 +111,11 @@ export default class InsightFacade implements IInsightFacade {
 		if (!table) {
 			return Promise.reject(new InsightError("no table found"));
 		}
-		let validRows = building.findValidBuildingRowsInTable(table as DefaultTreeAdapterMap["element"]);
-		let allRooms = await building.jsonToRooms(content, validRows);
+		let roomCount = await countTotalRooms(content, await processZip(content, "index.htm"));
 		let datasetToBeAdded: InsightDataset = {
-			id: id, kind: InsightDatasetKind.Rooms, numRows: allRooms.length,
+			id: id, kind: InsightDatasetKind.Rooms, numRows: roomCount,
 		};
-		await this.writeRoomsToFile(id, content, allRooms.length);
+		await this.writeRoomsToFile(id, content, roomCount);
 		this._currentAddedInsightDataset.push(datasetToBeAdded);
 		return this._currentAddedInsightDataset.map((dataset) => dataset.id);
 	}
