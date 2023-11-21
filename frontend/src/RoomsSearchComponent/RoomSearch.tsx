@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
 import constructQuery, { QueryParams, QueryType } from "../ConstructQuery";
 import AutocompleteInput from "../InstructorDepart/AutocompleteInput";
+import performApiCall from "../apiCall";
 
 type Room = {
 	rooms_name: string;
@@ -20,6 +21,55 @@ const RoomSearch = () => {
 	const [searchResults, setSearchResults] = useState<Room[]>([]);
 	const [error, setError] = useState<string>('');
 
+	const [types, setTypeList] = useState<string[]>([]);
+	const [furniture, setFurnitureList] = useState<string[]>([]);
+
+	useEffect(() => {
+		console.log("Fetching types");
+		fetchTypes().then(() => console.log("Types fetched"));
+	}, []);
+
+	useEffect(() => {
+		console.log("Fetching furniture");
+		fetchFurniture().then(() => console.log("Furniture fetched"));
+	}, []);
+
+	const fetchTypes = async () => {
+		try {
+			console.log("Fetching types");
+			const query = constructQuery(QueryType.ROOM_TYPE, {});
+			console.log("Query: " + JSON.stringify(query));
+			const response = await performApiCall(query, 'query');
+			console.log("Here");
+			console.log("Response received: " + response.result);
+			const typeResult = response.result.map((type: any) => type.rooms_type);
+			setTypeList(typeResult);
+		} catch (error) {
+			if (error instanceof Error) {
+				setError(error.message);
+			} else {
+				setError("Error: Could not fetch data");
+			}
+		}
+	}
+
+	const fetchFurniture = async () => {
+		try {
+			const query = constructQuery(QueryType.ROOM_FURNITURE, {});
+			const response = await performApiCall(query, 'query');
+			console.log("Response received: " + response.result);
+			const furnitureResult = response.result.map((furniture: any) => furniture.rooms_furniture);
+			setFurnitureList(furnitureResult);
+		} catch (error) {
+			if (error instanceof Error) {
+				setError(error.message);
+			} else {
+				setError("Error: Could not fetch data");
+			}
+		}
+	}
+
+
 	const handleRoomType = (value: string) => {
 		setRoomType(value);
 	};
@@ -32,94 +82,6 @@ const RoomSearch = () => {
 		setMinSeats(value);
 	};
 
-	const mockAPI = (query: string): Promise<Room[]> => {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				resolve([
-					{
-						"rooms_name": "WOOD_2",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 503
-					},
-					{
-						"rooms_name": "CIRS_1250",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 426
-					},
-					{
-						"rooms_name": "ESB_1013",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 350
-					},
-					{
-						"rooms_name": "WESB_100",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 325
-					},
-					{
-						"rooms_name": "SCRF_100",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 280
-					},
-					{
-						"rooms_name": "BUCH_A101",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 275
-					},
-					{
-						"rooms_name": "CHEM_B150",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 265
-					},
-					{
-						"rooms_name": "HENN_200",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 257
-					},
-					{
-						"rooms_name": "FSC_1005",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 250
-					},
-					{
-						"rooms_name": "CHEM_B250",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 240
-					},
-					{
-						"rooms_name": "BIOL_2000",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 228
-					},
-					{
-						"rooms_name": "GEOG_100",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 225
-					},
-					{
-						"rooms_name": "MATH_100",
-						"rooms_furniture": "Classroom-Fixed Tablets",
-						"rooms_type": "Tiered Large Group",
-						"maxSeats": 224
-					}
-				]);
-
-				reject("Error: Could not fetch data");
-			}, 1000);
-		});
-	}
 
 	const handleSearch = async () => {
 		if (!roomType) {
@@ -150,8 +112,9 @@ const RoomSearch = () => {
 
 		try {
 			const query = constructQuery(QueryType.ROOM_SEARCH, queryParam);
-			const results = await mockAPI(query);
-			setSearchResults(results);
+			const results = await performApiCall(query, 'query');
+			console.log("Response received: " + results.result);
+			setSearchResults(results.result);
 		} catch (err) {
 			setError("Failed to fetch data");
 		}
@@ -185,16 +148,20 @@ const RoomSearch = () => {
 	return (
 		<div>
 			<AutocompleteInput
-				options={['Small Group', 'Medium Group', 'Large Group', 'Tiered Large Group']}
+				options={types}
 				placeholder="Select/enter a Room Type"
 				onSelect={handleRoomType}
+				id="room-type-input"
+				name="room-type"
 			/>
 			<AutocompleteInput
-				options={['Classroom-Fixed Tables', 'Classroom-Movable Tables & Chairs', 'Classroom-Movable Tablets', 'Classroom-Fixed Tablets']}
+				options={furniture}
 				onSelect={handleFurnitureType}
 				placeholder="Select/enter a Furniture Type"
+				id="furniture-type-input"
+				name="furniture-type"
 			/>
-			<input type="number" value={minSeats} onChange={(e) => setMinSeats(e.target.valueAsNumber)} />
+			<input type="number" id="minSeats-input" name="minSeats" value={minSeats} onChange={(e) => setMinSeats(e.target.valueAsNumber)} />
 			<button onClick={handleSearch}>Search</button>
 			{error && <div className="error">{error}</div>}
 			{searchResults.length > 0 && <ResultsTable data={searchResults} />}

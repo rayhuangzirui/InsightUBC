@@ -4,9 +4,13 @@ import CourseAverageSearch from "./SearchAverage/CourseAverageSearch";
 import RoomSearch from "./RoomsSearchComponent/RoomSearch";
 // import './App.css';
 
-function App() {
+
+// let app = new App();
+// await app.initServer(4321);
+
+function AppPage() {
 	return (
-		<div className="App">
+		<div className="AppPage">
 			<CourseSearchByInsDepart />
 			<CourseAverageSearch />
 			<RoomSearch />
@@ -14,4 +18,4 @@ function App() {
 	);
 }
 
-export default App;
+export default AppPage;

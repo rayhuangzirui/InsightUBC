@@ -1,6 +1,7 @@
 import React, { SetStateAction, useState } from "react";
 import constructQuery, { QueryParams } from "../ConstructQuery";
 import { QueryType } from "../ConstructQuery";
+import performApiCall from "../apiCall";
 
 type CourseAvg = {
 	sections_dept: string;
@@ -29,58 +30,6 @@ const CourseAverageSearch = () => {
 		setYear(value);
 	};
 
-	const mockAPI = (query: string): Promise<CourseAvg[]> => {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				resolve([
-					{
-						sections_dept: "cpsc",
-						sections_id: "310",
-						sections_avg: 81.17,
-						sections_year: 2016,
-						sections_uuid: "3393",
-					},
-					{
-						sections_dept: "cpsc",
-						sections_id: "310",
-						sections_avg: 81.18,
-						sections_year: 2015,
-						sections_uuid: "62386",
-					},
-					{
-						sections_dept: "cpsc",
-						sections_id: "310",
-						sections_avg: 77.13,
-						sections_year: 2015,
-						sections_uuid: "62385",
-					},
-					{
-						sections_dept: "cpsc",
-						sections_id: "310",
-						sections_avg: 79.12,
-						sections_year: 2014,
-						sections_uuid: "67312",
-					},
-					{
-						sections_dept: "cpsc",
-						sections_id: "310",
-						sections_avg: 80.35,
-						sections_year: 2014,
-						sections_uuid: "1294",
-					},
-					{
-						sections_dept: "cpsc",
-						sections_id: "310",
-						sections_avg: 78.69,
-						sections_year: 2014,
-						sections_uuid: "1293",
-					},
-				]);
-
-				reject("Error: Could not fetch data");
-			}, 1000);
-		});
-	};
 	const handleSearch = async () => {
 		if (!courseId) {
 			setError('Please enter a valid CS course number.');
@@ -119,8 +68,9 @@ const CourseAverageSearch = () => {
 
 		try {
 			const query = constructQuery(QueryType.COURSE_AVG, queryParams);
-			const response = await mockAPI(query);
-			setCourseData(response);
+			const response = await performApiCall(query, 'query');
+			console.log("Response received: " + JSON.stringify(response));
+			setCourseData(response.result);
 		} catch (error) {
 			setError('Failed to fetch course data.');
 		}
@@ -131,7 +81,7 @@ const CourseAverageSearch = () => {
 			<table>
 				<thead>
 					<tr>
-						<th>Course ID</th>
+						<th>Course</th>
 						<th>Course Average</th>
 						<th>Year</th>
 						<th>Section Identifier</th>
@@ -155,12 +105,16 @@ const CourseAverageSearch = () => {
 		<div>
 			<input
 				type="text"
+				id="course-id-input"
+				name="course-id"
 				value={courseId}
 				onChange={(e) => setCourseId(e.target.value)}
 				placeholder="Enter CS course number"
 			/>
 			<input
 				type="number"
+				id="year-input"
+				name="year"
 				value={year}
 				onChange={(e) => setYear(e.target.valueAsNumber)}
 				placeholder="Enter year"

@@ -18,13 +18,16 @@ export enum QueryType {
 	// other query types
 	COURSE_AVG = "COURSE_AVG",
 	ROOM_SEARCH = "ROOM_SEARCH",
+	DEPARTMENT = "DEPARTMENT",
+	ROOM_TYPE = "ROOM_TYPE",
+	ROOM_FURNITURE = "ROOM_FURNITURE",
 }
 
-const constructQuery = (queryType: QueryType, params: QueryParams): string => {
+const constructQuery = (queryType: QueryType, params: QueryParams): any => {
 	switch (queryType) {
 		case QueryType.INSTRUCTOR_AND_DEPARTMENT:
 			return (
-				JSON.stringify(
+
 					{
 						"WHERE": {
 							"AND": [
@@ -50,11 +53,11 @@ const constructQuery = (queryType: QueryType, params: QueryParams): string => {
 							"ORDER": "sections_dept"
 						}
 					}
-				)
+
 			);
 		case QueryType.COURSE_AVG:
 			return (
-				JSON.stringify(
+
 					{
 						"WHERE": {
 							"AND": [
@@ -92,11 +95,11 @@ const constructQuery = (queryType: QueryType, params: QueryParams): string => {
 							}
 						}
 					}
-				)
+
 			)
 		case QueryType.ROOM_SEARCH:
 			return (
-				JSON.stringify(
+
 					{
 						"WHERE": {
 							"AND": [
@@ -146,7 +149,81 @@ const constructQuery = (queryType: QueryType, params: QueryParams): string => {
 							]
 						}
 					}
-				)
+
+			)
+		case QueryType.DEPARTMENT:
+			return (
+				{
+					"WHERE": {},
+					"OPTIONS": {
+						"COLUMNS": [
+							"sections_dept"
+						],
+						"ORDER": "sections_dept"
+					},
+					"TRANSFORMATIONS": {
+						"GROUP": [
+							"sections_dept"
+						],
+						"APPLY": []
+					}
+				}
+			)
+		case QueryType.ROOM_TYPE:
+			return (
+				{
+					"WHERE": {
+						"NOT": {
+							"IS": {
+								"rooms_type": "" // empty string not included
+							}
+						}
+					},
+					"OPTIONS": {
+						"COLUMNS": [
+							"rooms_type",
+							"typeCount"
+						],
+						"ORDER": "rooms_type"
+					},
+					"TRANSFORMATIONS": {
+						"GROUP": [
+							"rooms_type"
+						],
+						"APPLY": [
+							{
+								"typeCount": {
+									"COUNT": "rooms_type"
+								}
+							}
+						]
+					}
+				}
+			)
+		case QueryType.ROOM_FURNITURE:
+			return (
+				{
+					"WHERE": {},
+					"OPTIONS": {
+						"COLUMNS": [
+							"rooms_furniture",
+							"furnitureTypeCount"
+						],
+						"ORDER": "rooms_furniture"
+					},
+					"TRANSFORMATIONS": {
+						"GROUP": [
+							"rooms_furniture"
+						],
+						"APPLY": [
+							{
+								"furnitureTypeCount": {
+									"COUNT": "rooms_furniture"
+								}
+							}
+						]
+					}
+				}
 			)
 		default:
 			throw new Error("Invalid query type");

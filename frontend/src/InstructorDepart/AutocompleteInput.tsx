@@ -5,11 +5,13 @@ interface AutocompleteInputProps {
 	  options: string[];	// The list of options to display in the autocomplete dropdown
 	  onSelect: (value: string) => void; // The function to call when an option is selected
 	  placeholder: string; // The placeholder text to display in the input
+	  id: string; // The id of the input
+	  name: string; // The name of the input
 }
 
 let blurTimeout: ReturnType<typeof setTimeout> | null = null;
 
-const AutocompleteInput: React.FC<AutocompleteInputProps> = ({ options, onSelect, placeholder }) => {
+const AutocompleteInput: React.FC<AutocompleteInputProps> = ({ options, onSelect, placeholder, id, name }) => {
 	const [inputValue, setInputValue] = useState('');
 	const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 	const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -38,8 +40,8 @@ const AutocompleteInput: React.FC<AutocompleteInputProps> = ({ options, onSelect
 			<input
 				ref={inputRef}
 				type="text"
-				id="department-input"
-				name="department"
+				id={id}
+				name={name}
 				className="autocomplete-input"
 				placeholder={placeholder}
 				value={inputValue}

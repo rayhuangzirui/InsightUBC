@@ -1,7 +1,8 @@
-import React, { SetStateAction, useState } from "react";
+import React, { SetStateAction, useEffect, useState } from "react";
 import AutocompleteInput from './AutocompleteInput';
 import InstructorSearchField from './InstructorSearchField';
 import constructQuery, { QueryParams, QueryType } from "../ConstructQuery";
+import performApiCall from "../apiCall";
 // Import any additional utilities or services needed for API calls
 
 type Course = {
@@ -21,7 +22,28 @@ const CourseSearch = () => {
 	const [instructor, setInstructor] = useState<string>('');
 	const [results, setResults] = useState<Course[]>([]);
 	const [error, setError] = useState<string>('');
-	const [isSearching, setIsSearching] = useState(false);
+	const [departments, setDepartmentList] = useState<string[]>([]);
+	// const [isSearching, setIsSearching] = useState(false);
+
+	useEffect(() => {
+		fetchDepartments().then(() => console.log("Departments fetched"));
+	}, []);
+
+	const fetchDepartments = async () => {
+		try {
+			const query = constructQuery(QueryType.DEPARTMENT, {});
+			const response = await performApiCall(query, 'query');
+			console.log("Response received: " + response.result);
+			const departResult = response.result.map((department: any) => department.sections_dept);
+			setDepartmentList(departResult);
+		} catch (error) {
+			if (error instanceof Error) {
+				setError(error.message);
+			} else {
+				setError("Error: Could not fetch data");
+			}
+		}
+	}
 
 	const handleDepartmentSelect = (value: SetStateAction<string>) => {
 		setDepartment(value);
@@ -29,119 +51,6 @@ const CourseSearch = () => {
 
 	const handleInstructorSearch = (value: SetStateAction<string>) => {
 		setInstructor(value);
-	};
-
-	const mockAPI = (query: string): Promise<Course[]> => {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				resolve([
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "210",
-						sections_title: "sftwr constructn",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "210",
-						sections_title: "sftwr constructn",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "210",
-						sections_title: "sftwr constructn",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "213",
-						sections_title: "intro comp sys",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "213",
-						sections_title: "intro comp sys",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "213",
-						sections_title: "intro comp sys",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "213",
-						sections_title: "intro comp sys",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "213",
-						sections_title: "intro comp sys",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "213",
-						sections_title: "intro comp sys",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "213",
-						sections_title: "intro comp sys",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "213",
-						sections_title: "intro comp sys",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "213",
-						sections_title: "intro comp sys",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "313",
-						sections_title: "comp hard&os",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "313",
-						sections_title: "comp hard&os",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "313",
-						sections_title: "comp hard&os",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "313",
-						sections_title: "comp hard&os",
-					},
-					{
-						sections_instructor: "feeley, michael",
-						sections_dept: "cpsc",
-						sections_id: "313",
-						sections_title: "comp hard&os",
-					},
-				]);
-
-				reject("Error: Could not fetch data");
-			}, 1000);
-		});
 	};
 
 	const performSearch = async () => {
@@ -159,13 +68,11 @@ const CourseSearch = () => {
 		const queryParams: QueryParams = { department, instructor };
 		console.log(queryParams);
 
-		// Call the API and handle the response
-		// Return the response or an error message
-		// A simulated list of courses
 		try {
 			const query = constructQuery(QueryType.INSTRUCTOR_AND_DEPARTMENT, queryParams);
-			const response = await mockAPI(query);
-			setResults(response);
+			const response = await performApiCall(query, 'query');
+			console.log("Response received: " + response.result);
+			setResults(response.result);
 		} catch (error) {
 			if (error instanceof Error) {
 				setError(error.message);
@@ -203,13 +110,15 @@ const CourseSearch = () => {
 	return (
 		<div>
 			<AutocompleteInput
-				options={['cpsc', 'math', 'biol']} // Replace with actual department data
+				options={departments}
 				onSelect={handleDepartmentSelect}
 				placeholder="Select/enter a Department"
+				id="department-input"
+				name="department"
 			/>
-			<InstructorSearchField onSubmit={handleInstructorSearch} />
+			<InstructorSearchField onChange={handleInstructorSearch} />
 			<button onClick={performSearch}>Perform Search</button>
-			{/* Display results or errors */}
+			{error && <div className="error">{error}</div>}
 			{results.length > 0 && <ResultsTable data={results} />}
 		</div>
 	);
