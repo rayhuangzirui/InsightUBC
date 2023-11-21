@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import constructQuery, { QueryParams, QueryType } from "../ConstructQuery";
 import AutocompleteInput from "../InstructorDepart/AutocompleteInput";
 import performApiCall from "../apiCall";
+import "./RoomSearch.css";
+import "../InstructorDepart/TableStyle.css";
 
 type Room = {
 	rooms_name: string;
@@ -23,6 +25,8 @@ const RoomSearch = () => {
 
 	const [types, setTypeList] = useState<string[]>([]);
 	const [furniture, setFurnitureList] = useState<string[]>([]);
+
+	const [noResultsMessage, setNoResultsMessage] = useState<string>('');
 
 	useEffect(() => {
 		console.log("Fetching types");
@@ -84,6 +88,10 @@ const RoomSearch = () => {
 
 
 	const handleSearch = async () => {
+		setSearchResults([]);
+		setError('');
+		setNoResultsMessage('');
+
 		if (!roomType) {
 			setError("Please select a room type");
 			return;
@@ -114,15 +122,24 @@ const RoomSearch = () => {
 			const query = constructQuery(QueryType.ROOM_SEARCH, queryParam);
 			const results = await performApiCall(query, 'query');
 			console.log("Response received: " + results.result);
-			setSearchResults(results.result);
+			if (results.result.length === 0) {
+				setNoResultsMessage("No results found by room type: " + roomType + ", furniture type: " + furnitureType + ", and minimum number of seats: " + minSeats + ".");
+			} else {
+				setSearchResults(results.result);
+			}
+
 		} catch (err) {
-			setError("Failed to fetch data");
+			if (err instanceof Error) {
+				setError(err.message);
+			} else {
+				setError("Error: Could not fetch data");
+			}
 		}
 	};
 
 	const ResultsTable: React.FC<ResultsTableProps> = ({ data }) => {
 		return (
-			<table>
+			<table className="table">
 				<thead>
 					<tr>
 						<th>Room Name</th>
@@ -146,7 +163,7 @@ const RoomSearch = () => {
 	}
 
 	return (
-		<div>
+		<div className="room-search-container">
 			<AutocompleteInput
 				options={types}
 				placeholder="Select/enter a Room Type"
@@ -162,8 +179,9 @@ const RoomSearch = () => {
 				name="furniture-type"
 			/>
 			<input type="number" id="minSeats-input" name="minSeats" value={minSeats} onChange={(e) => setMinSeats(e.target.valueAsNumber)} />
-			<button onClick={handleSearch}>Search</button>
+			<button className="room-search-button" onClick={handleSearch}>Search</button>
 			{error && <div className="error">{error}</div>}
+			{noResultsMessage && <div className="no-results">{noResultsMessage}</div>}
 			{searchResults.length > 0 && <ResultsTable data={searchResults} />}
 		</div>
 	);

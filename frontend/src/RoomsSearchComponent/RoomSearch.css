@@ -1,0 +1,37 @@
+.room-search-container {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: auto;
+}
+
+.room-search-button {
+	padding: 8px 15px;
+	font-size: 16px;
+	background-color: #0055B7; /* UBC Blue */
+	color: white;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	margin-top: 10px;
+}
+
+.room-search-button:hover {
+	background-color: #00A7E1;
+}
+
+.error, .no-results {
+	color: red;
+	margin-top: 10px;
+}
+
+.room-search-container input[type='number'] {
+	width: 600px;
+	padding: 8px;
+	font-size: 16px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	margin-top: 10px;
+}

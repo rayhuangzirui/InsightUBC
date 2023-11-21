@@ -3,7 +3,8 @@ import AutocompleteInput from './AutocompleteInput';
 import InstructorSearchField from './InstructorSearchField';
 import constructQuery, { QueryParams, QueryType } from "../ConstructQuery";
 import performApiCall from "../apiCall";
-// Import any additional utilities or services needed for API calls
+import "./CourseSearch.css";
+import "./TableStyle.css";
 
 type Course = {
 	sections_instructor: string;
@@ -23,6 +24,7 @@ const CourseSearch = () => {
 	const [results, setResults] = useState<Course[]>([]);
 	const [error, setError] = useState<string>('');
 	const [departments, setDepartmentList] = useState<string[]>([]);
+	const [noResultsMessage, setNoResultsMessage] = useState<string>('');
 	// const [isSearching, setIsSearching] = useState(false);
 
 	useEffect(() => {
@@ -54,6 +56,9 @@ const CourseSearch = () => {
 	};
 
 	const performSearch = async () => {
+		setResults([]);
+		setError('');
+		setNoResultsMessage('');
 		if (!department) {
 			setError("Please select a department");
 			return;
@@ -72,7 +77,13 @@ const CourseSearch = () => {
 			const query = constructQuery(QueryType.INSTRUCTOR_AND_DEPARTMENT, queryParams);
 			const response = await performApiCall(query, 'query');
 			console.log("Response received: " + response.result);
-			setResults(response.result);
+
+			if (response.result.length === 0) {
+				setNoResultsMessage("No results found by department: " + department + " and last name: " + instructor + ".");
+
+			} else {
+				setResults(response.result);
+			}
 		} catch (error) {
 			if (error instanceof Error) {
 				setError(error.message);
@@ -84,7 +95,7 @@ const CourseSearch = () => {
 
 	const ResultsTable: React.FC<ResultsTableProps> = ({data}) => {
 		return (
-			<table>
+			<table className="table">
 				<thead>
 					<tr>
 						<th>Department</th>
@@ -108,7 +119,8 @@ const CourseSearch = () => {
 	}
 
 	return (
-		<div>
+		<div className="course-search-container">
+
 			<AutocompleteInput
 				options={departments}
 				onSelect={handleDepartmentSelect}
@@ -117,8 +129,9 @@ const CourseSearch = () => {
 				name="department"
 			/>
 			<InstructorSearchField onChange={handleInstructorSearch} />
-			<button onClick={performSearch}>Perform Search</button>
+			<button className="course-search-button" onClick={performSearch}>Search</button>
 			{error && <div className="error">{error}</div>}
+			{noResultsMessage && <div className="no-results">{noResultsMessage}</div>}
 			{results.length > 0 && <ResultsTable data={results} />}
 		</div>
 	);
