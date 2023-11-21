@@ -2,6 +2,8 @@ import React, { SetStateAction, useState } from "react";
 import constructQuery, { QueryParams } from "../ConstructQuery";
 import { QueryType } from "../ConstructQuery";
 import performApiCall from "../apiCall";
+import "./CourseAverageSearch.css";
+import "../InstructorDepart/TableStyle.css";
 
 type CourseAvg = {
 	sections_dept: string;
@@ -21,6 +23,7 @@ const CourseAverageSearch = () => {
 	const [year, setYear] = useState<number>(1900);
 	const [courseData, setCourseData] = useState<CourseAvg[]>([]);
 	const [error, setError] = useState<string>('');
+	const [noResultsMessage, setNoResultsMessage] = useState<string>('');
 
 	const handleCourseId = (value: SetStateAction<string>) => {
 		setCourseId(value);
@@ -31,6 +34,9 @@ const CourseAverageSearch = () => {
 	};
 
 	const handleSearch = async () => {
+		setCourseData([]);
+		setError('');
+		setNoResultsMessage('');
 		if (!courseId) {
 			setError('Please enter a valid CS course number.');
 			return;
@@ -70,15 +76,23 @@ const CourseAverageSearch = () => {
 			const query = constructQuery(QueryType.COURSE_AVG, queryParams);
 			const response = await performApiCall(query, 'query');
 			console.log("Response received: " + JSON.stringify(response));
-			setCourseData(response.result);
+			if (response.result.length === 0) {
+				setNoResultsMessage("No results found by course number: " + courseId + " and year: " + year + ".");
+			} else {
+				setCourseData(response.result);
+			}
 		} catch (error) {
-			setError('Failed to fetch course data.');
+			if (error instanceof Error) {
+				setError(error.message);
+			} else {
+				setError("Error: Could not fetch data");
+			}
 		}
 	};
 
 	const ResultsTable: React.FC<ResultsTableProps> = ({ data }) => {
 		return (
-			<table>
+			<table className="table">
 				<thead>
 					<tr>
 						<th>Course</th>
@@ -102,11 +116,12 @@ const CourseAverageSearch = () => {
 	}
 
 	return (
-		<div>
+		<div className="course-average-search-container">
 			<input
 				type="text"
 				id="course-id-input"
 				name="course-id"
+				className="course-average-search-input"
 				value={courseId}
 				onChange={(e) => setCourseId(e.target.value)}
 				placeholder="Enter CS course number"
@@ -115,12 +130,14 @@ const CourseAverageSearch = () => {
 				type="number"
 				id="year-input"
 				name="year"
+				className="course-average-search-input"
 				value={year}
 				onChange={(e) => setYear(e.target.valueAsNumber)}
 				placeholder="Enter year"
 			/>
-			<button onClick={handleSearch}>Search</button>
+			<button className="course-average-search-button" onClick={handleSearch}>Search</button>
 			{error && <div className="error">{error}</div>}
+			{noResultsMessage && <div className="no-results">{noResultsMessage}</div>}
 			{courseData.length > 0 && <ResultsTable data={courseData} />}
 		</div>
 	);

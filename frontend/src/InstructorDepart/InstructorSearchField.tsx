@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import './InstructorSearchField.css';
 
 interface InstructorSearchFieldProps {
 	onChange: (value: string) => void;
@@ -21,18 +22,20 @@ const InstructorSearchField: React.FC<InstructorSearchFieldProps> = ({ onChange 
 		// 	event.preventDefault();
 		// 	handleSearch();
 		// }}>
-		<input
-			type="text"
-			id="instructor-input"
-			name="instructor"
-			placeholder="Enter an instructor's last name"
-			value={instructor}
-			onChange={(event) => {
-				setInstructor(event.target.value);
-				onChange(event.target.value);
-			}}
-		/>
-
+		<div className = "instructor-search-field">
+			<input
+				type="text"
+				id="instructor-input"
+				name="instructor"
+				className="instructor-input"
+				placeholder="Enter an instructor's last name"
+				value={instructor}
+				onChange={(event) => {
+					setInstructor(event.target.value);
+					onChange(event.target.value);
+				}}
+			/>
+		</div>
 	);
 };
 

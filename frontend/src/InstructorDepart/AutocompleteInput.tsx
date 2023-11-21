@@ -24,7 +24,7 @@ const AutocompleteInput: React.FC<AutocompleteInputProps> = ({ options, onSelect
 
 		blurTimeout = setTimeout(() => {
 			setIsDropdownVisible(false);
-			setInputValue('');
+			// setInputValue('');
 		}, 100);
 	};
 
@@ -56,6 +56,7 @@ const AutocompleteInput: React.FC<AutocompleteInputProps> = ({ options, onSelect
 							event.preventDefault(); // Prevents input from losing focus
 							console.log("Item clicked: " + option);
 							onSelect(option);
+							setInputValue(option);
 							setIsDropdownVisible(false); // Hide dropdown after selecting an option
 							inputRef.current?.blur(); // Focus on input after selecting an option
 						}}>
