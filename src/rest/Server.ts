@@ -35,7 +35,7 @@ export default class Server {
 	 * @returns {Promise<void>}
 	 */
 	public start(): Promise<void> {
-/*		this.createInstanceAsync()
+		/*		this.createInstanceAsync()
 			.then((insightFacadeInstance) => {
 				// 在这里可以访问已完成的实例
 				console.("Async instance created:", insightFacadeInstance);
@@ -48,28 +48,32 @@ export default class Server {
 			return Promise.reject(new Error("Server already started"));
 		}
 		return new Promise((resolve, reject) => {
-			this.loadInitialDatasets().then(() => {
-				this.server = this.express.listen(this.port, () => {
-					console.info(`Server::start() server listening ${this.port}`);
-					resolve();
-				}).on("error", async (e: Error) => {
-					if ((e as any).code === "EADDRINUSE") {
-						console.error(`Server::start() - ERROR: Port ${this.port} is already in use`);
-						try {
-							await this.stop();
-							console.log("Server stopped successfully.");
-						} catch (error) {
-							console.error("Error stopping the server:", error);
-						}
-					} else {
-						console.error(`Server::start() - server ERROR: ${(e as Error).message}`);
-						reject(e);
-					}
+			this.loadInitialDatasets()
+				.then(() => {
+					this.server = this.express
+						.listen(this.port, () => {
+							console.info(`Server::start() server listening ${this.port}`);
+							resolve();
+						})
+						.on("error", async (e: Error) => {
+							if ((e as any).code === "EADDRINUSE") {
+								console.error(`Server::start() - ERROR: Port ${this.port} is already in use`);
+								try {
+									await this.stop();
+									console.log("Server stopped successfully.");
+								} catch (error) {
+									console.error("Error stopping the server:", error);
+								}
+							} else {
+								console.error(`Server::start() - server ERROR: ${(e as Error).message}`);
+								reject(e);
+							}
+						});
+				})
+				.catch((e: Error) => {
+					console.error(`Server::start() - ERROR loading datasets: ${(e as Error).message}`);
+					reject(e);
 				});
-			}).catch((e: Error) => {
-				console.error(`Server::start() - ERROR loading datasets: ${(e as Error).message}`);
-				reject(e);
-			});
 			// console.log(this.insightFacade);
 
 			/*			if (this.server !== undefined) {
@@ -129,7 +133,8 @@ export default class Server {
 			let sections: string = fs.readFileSync("./resources/archives/pair.zip").toString("base64");
 
 			// insightFacade.addDataset("sections", sections, InsightDatasetKind.Sections)
-			this.insightFacade.addDataset("sections", sections, InsightDatasetKind.Sections)
+			this.insightFacade
+				.addDataset("sections", sections, InsightDatasetKind.Sections)
 				.then(() => {
 					return this.insightFacade.addDataset("rooms", rooms, InsightDatasetKind.Rooms);
 				})
@@ -138,18 +143,19 @@ export default class Server {
 				})
 				.catch((error: Error) => {
 					// 检查错误消息是否包含了'Dataset already exists'
+					// console.log("Error adding dataset:", error.message);
 					if (error.message.includes("Dataset already exists")) {
 						// 如果是这个特定错误，打印消息（可选）并继续执行
 						console.log("Dataset already exists, continuing.");
 						resolve(); // 如果要继续执行后续操作，可以调用resolve
 					} else {
 						// 如果是其他错误，则正常拒绝Promise
+						// console.log("Rejecting promise");
 						reject(error);
 					}
 				});
 		});
 	}
-
 
 	// Registers middleware to parse request before passing them to request handlers
 	private registerMiddleware() {
@@ -171,9 +177,9 @@ export default class Server {
 		this.express.get("/", (req, res) => {
 			res.send("Welcome to the server!");
 		});
-		this.express.get("/query", this.handleQuery.bind(this));
+		// this.express.get("/query", this.handleQuery.bind(this));
+		this.express.post("/query", this.handleQuery.bind(this));
 		// TODO: your other endpoints should go here
-
 	}
 
 	// The next two methods handle the echo service.
@@ -199,7 +205,7 @@ export default class Server {
 		}
 	}
 
-/*
+	/*
 	private handleQuery(req: Request, res: Response) {
 			// todo: revert this
 			// const queryData = req.body;
@@ -237,38 +243,38 @@ export default class Server {
 	}
 */
 
-	private handleQuery(req: Request, res: Response) {
+	private async handleQuery(req: Request, res: Response) {
 		// todo: revert this
-		// const queryData = req.body;
-		const roomQuery = "{\n" +
-			"    \"WHERE\": {},\n" +
-			"    \"OPTIONS\": {\n" +
-			"       \"COLUMNS\": [\n" +
-			"          \"rooms_type\",\n" +
-			"          \"typeCount\"\n" +
-			"       ],\n" +
-			"       \"ORDER\": \"typeCount\"\n" +
-			"    },\n" +
-			"    \"TRANSFORMATIONS\": {\n" +
-			"       \"GROUP\": [\n" +
-			"          \"rooms_type\"\n" +
-			"       ],\n" +
-			"       \"APPLY\": [\n" +
-			"          {\n" +
-			"             \"typeCount\": {\n" +
-			"                \"COUNT\": \"rooms_name\"\n" +
-			"             }\n" +
-			"          }\n" +
-			"       ]\n" +
-			"    }\n" +
-			"}";
+		const queryData = req.body;
+		// const roomQuery = "{\n" +
+		// 	"    \"WHERE\": {},\n" +
+		// 	"    \"OPTIONS\": {\n" +
+		// 	"       \"COLUMNS\": [\n" +
+		// 	"          \"rooms_type\",\n" +
+		// 	"          \"typeCount\"\n" +
+		// 	"       ],\n" +
+		// 	"       \"ORDER\": \"typeCount\"\n" +
+		// 	"    },\n" +
+		// 	"    \"TRANSFORMATIONS\": {\n" +
+		// 	"       \"GROUP\": [\n" +
+		// 	"          \"rooms_type\"\n" +
+		// 	"       ],\n" +
+		// 	"       \"APPLY\": [\n" +
+		// 	"          {\n" +
+		// 	"             \"typeCount\": {\n" +
+		// 	"                \"COUNT\": \"rooms_name\"\n" +
+		// 	"             }\n" +
+		// 	"          }\n" +
+		// 	"       ]\n" +
+		// 	"    }\n" +
+		// 	"}";
 		// console.log(this.insightFacade);
-		return this.insightFacade.performQuery(JSON.parse(roomQuery))
-			.then((result ) => {
-				console.log(result);
-				res.status(200).json({success: true, result: result});
-			}).catch((error) => {
-				console.log(error);
-			});
+		try {
+			const result = await this.insightFacade.performQuery(queryData);
+			console.log(result);
+			res.status(200).json({success: true, result: result});
+		} catch (error) {
+			console.log(error);
+		}
 	}
 }
