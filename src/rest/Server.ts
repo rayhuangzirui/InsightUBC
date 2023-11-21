@@ -35,14 +35,6 @@ export default class Server {
 	 * @returns {Promise<void>}
 	 */
 	public start(): Promise<void> {
-		/*		this.createInstanceAsync()
-			.then((insightFacadeInstance) => {
-				// 在这里可以访问已完成的实例
-				console.("Async instance created:", insightFacadeInstance);
-			})
-			.catch((error) => {
-				console.error("Error creating instance:", error);
-			});*/
 		if (this.server !== undefined) {
 			console.error("Server::start() - ERROR: server already started");
 			return Promise.reject(new Error("Server already started"));
@@ -74,34 +66,6 @@ export default class Server {
 					console.error(`Server::start() - ERROR loading datasets: ${(e as Error).message}`);
 					reject(e);
 				});
-			// console.log(this.insightFacade);
-
-			/*			if (this.server !== undefined) {
-							console.error("Server::start() - server already listening");
-							reject();
-						} else {
-							// this.express.listen() is used to start the server and listen to the specified port
-							// when the server is started, the callback function is called
-							this.server = this.express.listen(this.port, () => {
-								console.info(`Server::start() - server listening on port: ${this.port}`);
-								resolve();
-							}).on("error", (err: Error) => {
-								// catches errors in server start
-								console.error(`Server::start() - server ERROR: ${err.message}`);
-								reject(err);
-							});
-						}*/
-		});
-	}
-
-	private createInstanceAsync() {
-		return new Promise((resolve, reject) => {
-			try {
-				this.insightFacade = new InsightFacade();
-				resolve(this.insightFacade);
-			} catch (error) {
-				reject(error);
-			}
 		});
 	}
 
@@ -142,15 +106,10 @@ export default class Server {
 					resolve();
 				})
 				.catch((error: Error) => {
-					// 检查错误消息是否包含了'Dataset already exists'
-					// console.log("Error adding dataset:", error.message);
 					if (error.message.includes("Dataset already exists")) {
-						// 如果是这个特定错误，打印消息（可选）并继续执行
 						console.log("Dataset already exists, continuing.");
-						resolve(); // 如果要继续执行后续操作，可以调用resolve
+						resolve();
 					} else {
-						// 如果是其他错误，则正常拒绝Promise
-						// console.log("Rejecting promise");
 						reject(error);
 					}
 				});
@@ -163,7 +122,6 @@ export default class Server {
 		// register a built-in express middleware
 		// this middleware parses incoming requests with JSON payloads and put the parsed object in req.body
 		this.express.use(express.json());
-		// 用于处理原始的请求体，例如不是json的
 		this.express.use(express.raw({type: "application/*", limit: "10mb"}));
 		// enable cors in request headers to allow cross-origin HTTP requests
 		this.express.use(cors());
@@ -177,9 +135,52 @@ export default class Server {
 		this.express.get("/", (req, res) => {
 			res.send("Welcome to the server!");
 		});
-		// this.express.get("/query", this.handleQuery.bind(this));
 		this.express.post("/query", this.handleQuery.bind(this));
-		// TODO: your other endpoints should go here
+		this.express.put("/dataset/:id/:kind", this.handleAddDataset.bind(this));
+		this.express.delete("/dataset/:id", this.handleRemoveDataset.bind(this));
+		this.express.get("/datasets", this.handleListDatasets.bind(this));
+	}
+
+	private handleAddDataset(req: Request, res: Response) {
+		try {
+			const id = req.params.id;
+			// const kind = req.params.kind;
+			const kind = req.params.kind.toLowerCase().trim() === "rooms" ?
+				InsightDatasetKind.Rooms : InsightDatasetKind.Sections;
+			const content = req.body.toString("base64");
+			this.insightFacade.addDataset(id, content, kind).then((result) => {
+				res.status(200).json({success: true, result: result});
+			}).catch((error) => {
+				res.status(400).json({success: false, error: error});
+			});
+		} catch (error) {
+			res.status(400).json({success: false, error: error});
+		}
+	}
+
+	private handleRemoveDataset(req: Request, res: Response) {
+		try {
+			const id = req.params.id;
+			this.insightFacade.removeDataset(id).then((result) => {
+				res.status(200).json({success: true, result: result});
+			}).catch((error) => {
+				res.status(400).json({success: false, error: error});
+			});
+		} catch (error) {
+			res.status(400).json({success: false, error: error});
+		}
+	}
+
+	private handleListDatasets(req: Request, res: Response) {
+		try {
+			this.insightFacade.listDatasets().then((result) => {
+				res.status(200).json({success: true, result: result});
+			}).catch((error) => {
+				res.status(400).json({success: false, error: error});
+			});
+		} catch (error) {
+			res.status(400).json({success: false, error: error});
+		}
 	}
 
 	// The next two methods handle the echo service.
@@ -205,76 +206,15 @@ export default class Server {
 		}
 	}
 
-	/*
-	private handleQuery(req: Request, res: Response) {
-			// todo: revert this
-			// const queryData = req.body;
-		const roomQuery = "{\n" +
-				"    \"WHERE\": {},\n" +
-				"    \"OPTIONS\": {\n" +
-				"       \"COLUMNS\": [\n" +
-				"          \"rooms_type\",\n" +
-				"          \"typeCount\"\n" +
-				"       ],\n" +
-				"       \"ORDER\": \"typeCount\"\n" +
-				"    },\n" +
-				"    \"TRANSFORMATIONS\": {\n" +
-				"       \"GROUP\": [\n" +
-				"          \"rooms_type\"\n" +
-				"       ],\n" +
-				"       \"APPLY\": [\n" +
-				"          {\n" +
-				"             \"typeCount\": {\n" +
-				"                \"COUNT\": \"rooms_name\"\n" +
-				"             }\n" +
-				"          }\n" +
-				"       ]\n" +
-				"    }\n" +
-				"}";
-			// console.log(this.insightFacade);
-		this.insightFacade.performQuery(roomQuery)
-			.then((result ) => {
-				console.log(result);
-				res.status(200).json({success: true, result: result});
-			}).catch((error) => {
-				console.log(error);
-
-			});
-	}
-*/
-
 	private async handleQuery(req: Request, res: Response) {
-		// todo: revert this
 		const queryData = req.body;
-		// const roomQuery = "{\n" +
-		// 	"    \"WHERE\": {},\n" +
-		// 	"    \"OPTIONS\": {\n" +
-		// 	"       \"COLUMNS\": [\n" +
-		// 	"          \"rooms_type\",\n" +
-		// 	"          \"typeCount\"\n" +
-		// 	"       ],\n" +
-		// 	"       \"ORDER\": \"typeCount\"\n" +
-		// 	"    },\n" +
-		// 	"    \"TRANSFORMATIONS\": {\n" +
-		// 	"       \"GROUP\": [\n" +
-		// 	"          \"rooms_type\"\n" +
-		// 	"       ],\n" +
-		// 	"       \"APPLY\": [\n" +
-		// 	"          {\n" +
-		// 	"             \"typeCount\": {\n" +
-		// 	"                \"COUNT\": \"rooms_name\"\n" +
-		// 	"             }\n" +
-		// 	"          }\n" +
-		// 	"       ]\n" +
-		// 	"    }\n" +
-		// 	"}";
-		// console.log(this.insightFacade);
 		try {
 			const result = await this.insightFacade.performQuery(queryData);
 			console.log(result);
 			res.status(200).json({success: true, result: result});
-		} catch (error) {
-			console.log(error);
+		} catch (err) {
+			console.log(err);
+			res.status(400).json({error: err});
 		}
 	}
 }
