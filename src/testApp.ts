@@ -9,7 +9,7 @@ import * as parse5 from "parse5" ;
 import {tableToRooms} from "./controller/InsightHelpers";
 // eslint-disable-next-line import/namespace
 import InsightFacade from "./controller/InsightFacade";
-import {App} from "./app";
+import {App} from "./App";
 import {getDatasetFromKind,prepareForQuery} from "./QueryParsers/Validators";
 import {getContentFromArchives} from "../test/TestUtil";
 import {findValidBuildingRowsInTable, jsonToRooms} from "./controller/BuildingManager";
