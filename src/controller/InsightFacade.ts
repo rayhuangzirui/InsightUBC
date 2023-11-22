@@ -18,6 +18,7 @@ import {Room} from "../model/Room";
 import {DefaultTreeAdapterMap} from "parse5";
 import {CacheList} from "./CacheList";
 import {validateFieldWithKind} from "./QueryEngineHelper";
+import {LOGIC} from "../QueryParsers/ClausesEnum";
 
 export default class InsightFacade implements IInsightFacade {
 	private _currentAddedInsightDataset: InsightDataset[] = [];
@@ -57,6 +58,7 @@ export default class InsightFacade implements IInsightFacade {
 			return Promise.reject(new InsightError("Dataset already exists"));
 		}
 		if (kind === InsightDatasetKind.Sections) {
+			// console.log(await this.handleSectionsDataset(id, content));
 			return this.handleSectionsDataset(id, content);
 		}
 		if (kind === InsightDatasetKind.Rooms) {
@@ -265,7 +267,6 @@ export default class InsightFacade implements IInsightFacade {
 			}
 			return Promise.resolve(result);
 		} catch (error) {
-			console.log("Error is " + error);
 			if (error instanceof InsightError) {
 				return Promise.reject(error);
 			}
