@@ -40,7 +40,14 @@ export default class Server {
 			return Promise.reject(new Error("Server already started"));
 		}
 		return new Promise((resolve, reject) => {
-			this.loadInitialDatasets()
+			this.server = this.express.listen(this.port, () => {
+				console.info(`Server::start() - started at http://localhost:${this.port}`);
+				resolve();
+			}).on("error", (err: Error) => {
+				console.error(`Server::start() - ERROR: ${err.message}`);
+				reject(err);
+			});
+/*			this.loadInitialDatasets()
 				.then(() => {
 					this.server = this.express
 						.listen(this.port, () => {
@@ -65,7 +72,7 @@ export default class Server {
 				.catch((e: Error) => {
 					console.error(`Server::start() - ERROR loading datasets: ${(e as Error).message}`);
 					reject(e);
-				});
+				});*/
 		});
 	}
 
@@ -145,8 +152,17 @@ export default class Server {
 		try {
 			const id = req.params.id;
 			// const kind = req.params.kind;
-			const kind = req.params.kind.toLowerCase().trim() === "rooms" ?
-				InsightDatasetKind.Rooms : InsightDatasetKind.Sections;
+			let kind;
+/*			const kind = req.params.kind.toLowerCase().trim() === "rooms" ?
+				InsightDatasetKind.Rooms : InsightDatasetKind.Sections;*/
+			if (req.params.kind.toLowerCase().trim() === "rooms") {
+				kind = InsightDatasetKind.Rooms;
+			} else if (req.params.kind.toLowerCase().trim() === "sections") {
+				kind = InsightDatasetKind.Sections;
+			} else {
+				res.status(400).json({success: false, error: "Invalid dataset kind"});
+				return;
+			}
 			const content = req.body.toString("base64");
 			this.insightFacade.addDataset(id, content, kind).then((result) => {
 				res.status(200).json({success: true, result: result});

@@ -62,14 +62,7 @@ export async function jsonToRooms(datasetId: string): Promise<Room[]> {
 	let datafileString: string = await fs_promise.readFile(dataFilePath, "utf8");
 	return  JSON.parse(datafileString);
 }
-/* export async function tableToRooms(datasetId: string): Promise<DefaultTreeAdapterMap["element"]> {
-	const dataFilePath = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + datasetId + ".json");
-	let datafileString: string = await fs_promise.readFile(dataFilePath, "utf8");
-	// datafileString = JSON.parse(datafileString);
-	let serilizedString =  parse5.serialize(JSON.parse(datafileString));
-	const document = parse5.parse(serilizedString);
-	return document.childNodes[0] as DefaultTreeAdapterMap["element"];
-}*/
+
 export async function tableToRooms(datasetId: string) {
 	const dataFilePath: string = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + datasetId + ".html");
 	const htmlString: string = await fs.promises.readFile(dataFilePath, {encoding: "utf8"});
@@ -105,6 +98,7 @@ export function getAllRooms(buildings: Building[]): Room[] {
 }
 
 export async function isValidZip(loadedContent: JSZip): Promise<boolean> {
+	console.log("isValidZip");
 	let totalDirectories = 0;
 	let isValid = true;
 	let validationPromises: Array<Promise<any>> = [];
