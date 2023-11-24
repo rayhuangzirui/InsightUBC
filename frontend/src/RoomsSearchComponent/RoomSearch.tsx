@@ -45,7 +45,7 @@ const RoomSearch = () => {
 			console.log("Query: " + JSON.stringify(query));
 			const response = await performApiCall(query, 'query');
 			console.log("Here");
-			console.log("Response received: " + response.result);
+			console.log("Response received: " + JSON.stringify(response.result));
 			const typeResult = response.result.map((type: any) => type.rooms_type);
 			setTypeList(typeResult);
 		} catch (error) {
@@ -61,7 +61,7 @@ const RoomSearch = () => {
 		try {
 			const query = constructQuery(QueryType.ROOM_FURNITURE, {});
 			const response = await performApiCall(query, 'query');
-			console.log("Response received: " + response.result);
+			console.log("Response received: " + JSON.stringify(response.result));
 			const furnitureResult = response.result.map((furniture: any) => furniture.rooms_furniture);
 			setFurnitureList(furnitureResult);
 		} catch (error) {
@@ -121,7 +121,7 @@ const RoomSearch = () => {
 		try {
 			const query = constructQuery(QueryType.ROOM_SEARCH, queryParam);
 			const results = await performApiCall(query, 'query');
-			console.log("Response received: " + results.result);
+			console.log("Response received: " + JSON.stringify(results.result));
 			if (results.result.length === 0) {
 				setNoResultsMessage("No results found by room type: " + roomType + ", furniture type: " + furnitureType + ", and minimum number of seats: " + minSeats + ".");
 			} else {

@@ -35,7 +35,7 @@ const CourseSearch = () => {
 		try {
 			const query = constructQuery(QueryType.DEPARTMENT, {});
 			const response = await performApiCall(query, 'query');
-			console.log("Response received: " + response.result);
+			console.log("Response received: " + JSON.stringify(response.result));
 			const departResult = response.result.map((department: any) => department.sections_dept);
 			setDepartmentList(departResult);
 		} catch (error) {
@@ -76,7 +76,7 @@ const CourseSearch = () => {
 		try {
 			const query = constructQuery(QueryType.INSTRUCTOR_AND_DEPARTMENT, queryParams);
 			const response = await performApiCall(query, 'query');
-			console.log("Response received: " + response.result);
+			console.log("Response received: " + JSON.stringify(response.result));
 
 			if (response.result.length === 0) {
 				setNoResultsMessage("No results found by department: " + department + " and last name: " + instructor + ".");
