@@ -98,7 +98,6 @@ export function getAllRooms(buildings: Building[]): Room[] {
 }
 
 export async function isValidZip(loadedContent: JSZip): Promise<boolean> {
-	console.log("isValidZip");
 	let totalDirectories = 0;
 	let isValid = true;
 	let validationPromises: Array<Promise<any>> = [];
