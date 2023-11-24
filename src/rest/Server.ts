@@ -139,9 +139,9 @@ export default class Server {
 		// This is an example endpoint this you can invoke by accessing this URL in your browser:
 		// http://localhost:4321/echo/hello
 		this.express.get("/echo/:msg", Server.echo);
-		this.express.get("/", (req, res) => {
+/*		this.express.get("/", (req, res) => {
 			res.send("Welcome to the server!");
-		});
+		});*/
 		this.express.post("/query", this.handleQuery.bind(this));
 		this.express.put("/dataset/:id/:kind", this.handleAddDataset.bind(this));
 		this.express.delete("/dataset/:id", this.handleRemoveDataset.bind(this));
@@ -154,7 +154,7 @@ export default class Server {
 	private handleAddDataset(req: Request, res: Response) {
 		try {
 			const id = req.params.id;
-			// const kind = req.params.kind;
+			// const kind = req.params.kindd;
 			let kind;
 /*			const kind = req.params.kind.toLowerCase().trim() === "rooms" ?
 				InsightDatasetKind.Rooms : InsightDatasetKind.Sections;*/
