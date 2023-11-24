@@ -146,6 +146,9 @@ export default class Server {
 		this.express.put("/dataset/:id/:kind", this.handleAddDataset.bind(this));
 		this.express.delete("/dataset/:id", this.handleRemoveDataset.bind(this));
 		this.express.get("/datasets", this.handleListDatasets.bind(this));
+		this.express.all("*", (req: Request, res: Response) => {
+			res.status(400).send({error: "Bad Request"});
+		});
 	}
 
 	private handleAddDataset(req: Request, res: Response) {
