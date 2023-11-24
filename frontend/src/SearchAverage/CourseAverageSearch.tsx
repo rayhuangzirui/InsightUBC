@@ -75,7 +75,7 @@ const CourseAverageSearch = () => {
 		try {
 			const query = constructQuery(QueryType.COURSE_AVG, queryParams);
 			const response = await performApiCall(query, 'query');
-			console.log("Response received: " + JSON.stringify(response));
+			console.log("Response received: " + JSON.stringify(response.result));
 			if (response.result.length === 0) {
 				setNoResultsMessage("No results found by course number: " + courseId + " and year: " + year + ".");
 			} else {
