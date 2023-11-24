@@ -8,7 +8,7 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 ## Steps
 
 1. Start the server before running frontend. To start the server, at the directory: `project_team231/src`, run the following commands:
-	### `ts-node serverStart.ts`
+	### `ts-node App.ts`
 	Server will start at [http://localhost:4321](http://localhost:4321).
 
 
