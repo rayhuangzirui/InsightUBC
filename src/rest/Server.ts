@@ -2,7 +2,7 @@ import express, {Application, Request, Response} from "express";
 import * as http from "http";
 import cors from "cors";
 import InsightFacade from "../controller/InsightFacade";
-import {InsightDatasetKind, InsightResult} from "../controller/IInsightFacade";
+import {InsightDatasetKind, InsightError, InsightResult, NotFoundError} from "../controller/IInsightFacade";
 import fs from "fs";
 
 export default class Server {
@@ -139,9 +139,9 @@ export default class Server {
 		// This is an example endpoint this you can invoke by accessing this URL in your browser:
 		// http://localhost:4321/echo/hello
 		this.express.get("/echo/:msg", Server.echo);
-/*		this.express.get("/", (req, res) => {
+		this.express.get("/", (req, res) => {
 			res.send("Welcome to the server!");
-		});*/
+		});
 		this.express.post("/query", this.handleQuery.bind(this));
 		this.express.put("/dataset/:id/:kind", this.handleAddDataset.bind(this));
 		this.express.delete("/dataset/:id", this.handleRemoveDataset.bind(this));
@@ -151,54 +151,59 @@ export default class Server {
 		});
 	}
 
-	private handleAddDataset(req: Request, res: Response) {
+	private async handleAddDataset(req: Request, res: Response) {
 		try {
 			const id = req.params.id;
 			// const kind = req.params.kindd;
 			let kind;
-/*			const kind = req.params.kind.toLowerCase().trim() === "rooms" ?
-				InsightDatasetKind.Rooms : InsightDatasetKind.Sections;*/
 			if (req.params.kind.toLowerCase().trim() === "rooms") {
 				kind = InsightDatasetKind.Rooms;
 			} else if (req.params.kind.toLowerCase().trim() === "sections") {
 				kind = InsightDatasetKind.Sections;
 			} else {
-				res.status(400).json({success: false, error: "Invalid dataset kind"});
+				res.status(400).json({error: "Invalid kind"});
 				return;
 			}
 			const content = req.body.toString("base64");
-			this.insightFacade.addDataset(id, content, kind).then((result) => {
-				res.status(200).json({success: true, result: result});
-			}).catch((error) => {
-				res.status(400).json({success: false, error: error});
+			this.insightFacade.addDataset(id, content, kind).then((arr) => {
+				res.status(200).json({result: arr});
+			}).catch((err) => {
+				res.status(400).json({
+					error: "add dataset failed"
+				});
 			});
-		} catch (error) {
-			res.status(400).json({success: false, error: error});
+		} catch(err)  {
+			res.status(400).json({error: "unexpected add dataset failed"});
+
 		}
 	}
 
 	private handleRemoveDataset(req: Request, res: Response) {
 		try {
 			const id = req.params.id;
-			this.insightFacade.removeDataset(id).then((result) => {
-				res.status(200).json({success: true, result: result});
-			}).catch((error) => {
-				res.status(400).json({success: false, error: error});
+			this.insightFacade.removeDataset(id).then((str) => {
+				res.status(200).json({result: str});
+			}).catch((err) => {
+				if (err instanceof NotFoundError) {
+					res.status(404).json({error: "dataset not found"});
+				} else {
+					res.status(400).json({error: "remove dataset failed"});
+				}
 			});
 		} catch (error) {
-			res.status(400).json({success: false, error: error});
+			res.status(400).json({error: "unexpected remove dataset failed"});
 		}
 	}
 
 	private handleListDatasets(req: Request, res: Response) {
 		try {
-			this.insightFacade.listDatasets().then((result) => {
-				res.status(200).json({success: true, result: result});
+			this.insightFacade.listDatasets().then((arr) => {
+				res.status(200).json({result: arr});
 			}).catch((error) => {
-				res.status(400).json({success: false, error: error});
+				res.status(400).json({error: "list dataset failed"});
 			});
 		} catch (error) {
-			res.status(400).json({success: false, error: error});
+			res.status(400).json({error: "unexpected list dataset failed"});
 		}
 	}
 
@@ -228,12 +233,10 @@ export default class Server {
 	private async handleQuery(req: Request, res: Response) {
 		const queryData = req.body;
 		try {
-			const result = await this.insightFacade.performQuery(queryData);
-			console.log(result);
-			res.status(200).json({success: true, result: result});
+			const arr = await this.insightFacade.performQuery(queryData);
+			res.status(200).json({result: arr});
 		} catch (err) {
-			console.log(err);
-			res.status(400).json({error: err});
+			res.status(400).json({error: "query failed"});
 		}
 	}
 }

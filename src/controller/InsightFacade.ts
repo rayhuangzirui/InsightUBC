@@ -58,11 +58,10 @@ export default class InsightFacade implements IInsightFacade {
 			return Promise.reject(new InsightError("Dataset already exists"));
 		}
 		if (kind === InsightDatasetKind.Sections) {
-			// console.log(await this.handleSectionsDataset(id, content));
-			return this.handleSectionsDataset(id, content);
+			return await this.handleSectionsDataset(id, content);
 		}
 		if (kind === InsightDatasetKind.Rooms) {
-			return this.handleRoomsDataset(id, content);
+			return await this.handleRoomsDataset(id, content);
 		}
 		return Promise.reject(new InsightError("Invalid kind"));
 	}
@@ -123,6 +122,7 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async writeRoomsToFile(id: string, content: string, nRow: number): Promise<void> {
+		// console.log("writing to file");
 		const pathToWrite = path.join(__dirname, "..", "..", "data", "Buildings" + "_" + id + ".json");
 		await this.ensureDirectoryExists(path.join(__dirname, "..", "..", "data"));
 		let json = {
@@ -130,8 +130,7 @@ export default class InsightFacade implements IInsightFacade {
 			data: content,
 			numRows: nRow
 		};
-
-		fs.writeFileSync(pathToWrite, JSON.stringify(json, null, 4), "utf8");
+		 fs.writeFileSync(pathToWrite, JSON.stringify(json, null, 4), "utf8");
 	}
 
 	private async writeDataToFile(id: string, parsedData: any[]): Promise<void> {
@@ -295,6 +294,7 @@ export default class InsightFacade implements IInsightFacade {
 	}
 
 	public async ensureDirectoryExists(dataFolderPath: string) {
+		console.log(dataFolderPath);
 		await fs_extra.ensureDir(dataFolderPath);
 	}
 }
